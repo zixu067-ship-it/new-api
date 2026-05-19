@@ -60,19 +60,21 @@ export const useNavigation = (t, docsLink, headerNavModules) => {
           ]
         : []),
       {
-        text: t('关于'),
-        itemKey: 'about',
-        to: '/about',
+        text: t('我想成为代理'),
+        itemKey: 'agent',
+        to: '/agent',
       },
     ];
 
     // 根据配置过滤导航链接
     return allLinks.filter((link) => {
+      if (link.itemKey === 'agent') {
+        return true;
+      }
       if (link.itemKey === 'docs') {
-        return docsLink && modules.docs;
+        return false;
       }
       if (link.itemKey === 'pricing') {
-        // 支持新的pricing配置格式
         return typeof modules.pricing === 'object'
           ? modules.pricing.enabled
           : modules.pricing;

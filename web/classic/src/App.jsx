@@ -53,6 +53,7 @@ import SetupCheck from './components/layout/SetupCheck';
 const Home = lazy(() => import('./pages/Home'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const About = lazy(() => import('./pages/About'));
+const Agent = lazy(() => import('./pages/Agent'));
 const UserAgreement = lazy(() => import('./pages/UserAgreement'));
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
 
@@ -343,13 +344,21 @@ function App() {
           }
         />
         <Route
-          path='/user-agreement'
-          element={
-            <Suspense fallback={<Loading></Loading>} key={location.pathname}>
-              <UserAgreement />
-            </Suspense>
-          }
-        />
+            path='/user-agreement'
+            element={
+              <Suspense fallback={<Loading></Loading>} key={location.pathname}>
+                <UserAgreement />
+              </Suspense>
+            }
+          />
+          <Route
+            path='/agent'
+            element={
+              <Suspense fallback={<Loading></Loading>} key={location.pathname}>
+                <Agent />
+              </Suspense>
+            }
+          />
         <Route
           path='/privacy-policy'
           element={
