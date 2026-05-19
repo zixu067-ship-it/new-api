@@ -281,6 +281,14 @@ func migrateDB() error {
 		&CustomOAuthProvider{},
 		&UserOAuthBinding{},
 		&PerfMetric{},
+		&PromoGroup{},
+    &PromoGroup{},
+    &PromoMember{},
+    &AgentProfile{},
+    &UserGroupAttribution{},
+    &ProfitRecord{},
+    &Payout{},
+    &LeaderboardSnapshot{},
 	)
 	if err != nil {
 		return err
