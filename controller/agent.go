@@ -365,7 +365,7 @@ package controller
         var target *model.PromoMember
         used := 0.0
         for _, m := range members {
-                if m.Id == memberId {
+                if m.UserId == memberId {
                         target = m
                         continue
                 }
@@ -421,7 +421,7 @@ package controller
                 return
         }
         var target model.PromoMember
-        if err := model.DB.Where("id = ?", memberId).First(&target).Error; err != nil {
+        if err := model.DB.Where("user_id = ?", memberId).First(&target).Error; err != nil {
                 c.JSON(http.StatusOK, gin.H{"success": false, "message": "组员不存在"})
                 return
         }

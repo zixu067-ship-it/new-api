@@ -73,6 +73,7 @@ func SetApiRouter(router *gin.Engine) {
                         agentRoute.GET("/group", controller.GetMyGroup)
                         agentRoute.POST("/group", controller.CreateGroup)
                         agentRoute.PUT("/group", controller.UpdateGroup)
+                  agentRoute.DELETE("/group", controller.DissolveGroup)
                         agentRoute.POST("/group/invite", controller.CreateInvite)
                         agentRoute.POST("/invite/:token/accept", controller.AcceptInvite)
                         agentRoute.PUT("/group/member/:id", controller.UpdateMemberShare)

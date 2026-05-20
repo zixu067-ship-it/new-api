@@ -602,6 +602,26 @@ const LeaderDashboard = ({ profile, group, members, leaderboard, reload }) => {
     });
   };
 
+  const dissolveGroup = () => {
+    Modal.confirm({
+      title: '⚠️ 解散小组？',
+      content: (
+        <div>
+          <p>解散后，本小组及全部成员关系将被永久删除，且无法恢复。</p>
+          <p>所有未接受的邀请链接将立即失效。</p>
+          <p style={{ color: '#e64a19' }}>请仅在小组建错或不再继续运营时操作。</p>
+        </div>
+      ),
+      okType: 'danger',
+      okText: '确认解散',
+      onOk: async () => {
+        const r = await API.delete('/api/agent/group');
+        if (r.data.success) { Toast.success('小组已解散'); reload(); }
+        else Toast.error(r.data.message || '解散失败');
+      },
+    });
+  };
+
   const sidebar = [
     { key: 'overview', icon: <IconHome />, label: '小组概览' },
     { key: 'members',  icon: <IconUserGroup />, label: '组员管理' },
@@ -909,6 +929,17 @@ const LeaderDashboard = ({ profile, group, members, leaderboard, reload }) => {
                 <Button icon={<IconEdit />} onClick={() => setEditProfile(true)}>修改个人资料</Button>
               </div>
             </Card>
+
+            <Divider margin="24px" />
+            <Title heading={5} style={{ color: '#e64a19' }}>⚠️ 危险区域</Title>
+            <Card style={{ borderColor: '#ffccbc' }}>
+              <Text type="warning">解散小组将永久删除该小组及所有成员关系，无法恢复。</Text>
+              <div style={{ marginTop: 12 }}>
+                <Button type="danger" theme="solid" icon={<IconDelete />} onClick={dissolveGroup}>
+                  解散小组
+                </Button>
+              </div>
+            </Card>
           </div>
         )}
       </Card>
@@ -996,7 +1027,7 @@ const GroupEditInline = ({ initial, onSave }) => {
 /* ================================================================== */
 /*  组员仪表盘                                                            */
 /* ================================================================== */
-const MemberDashboard = ({ profile, group, leader, leaderboard, reload }) => {
+const MemberDashboard = ({ profile, group, leader, me, leaderboard, reload }) => {
   const [editProfile, setEditProfile] = useState(false);
   const [introOpen, setIntroOpen] = useState(false);
 
@@ -1066,7 +1097,7 @@ const MemberDashboard = ({ profile, group, leader, leaderboard, reload }) => {
       <div className="agent-v3-stat-grid">
         <div className="agent-v3-stat">
           <div className="agent-v3-stat-label">我的分红比例</div>
-          <div className="agent-v3-stat-value">{pct(profile?.share_pct_in_group || 0)}</div>
+          <div className="agent-v3-stat-value">{pct(me?.share_pct_in_group || 0)}</div>
         </div>
         <div className="agent-v3-stat">
           <div className="agent-v3-stat-label">小组本周排名</div>
@@ -1268,6 +1299,7 @@ const Agent = () => {
   const [profile, setProfile] = useState(null);
   const [group, setGroup] = useState(null);
   const [members, setMembers] = useState([]);
+  const [me, setMe] = useState(null);
   const [leader, setLeader] = useState(null);
   const [leaderboard, setLeaderboard] = useState([]);
   const [phase, setPhase] = useState('intro'); // intro | profile-form | group-create | leader | member
@@ -1307,6 +1339,7 @@ const Agent = () => {
       const raw = gr.data.data;
       const g = raw.group || raw;
       setGroup(g);
+      setMe(raw.me || null);
       const isLeader = !!raw.is_leader;
       const rawMembers = Array.isArray(raw.members) ? raw.members : [];
 
@@ -1353,7 +1386,7 @@ const Agent = () => {
 
   return (
     <div className="agent-v3-root">
-      <DebugPanel data={{ phase, profile, group, members, leader, leaderboard, inviteToken, _hint: 'v15: 邀请落地 ?invite=TOKEN' }} />
+      <DebugPanel data={{ phase, profile, group, members, me, leader, leaderboard, inviteToken, _hint: 'v16: me.share_pct + dissolve group + by user_id' }} />
       <div style={{ position: 'relative', zIndex: 1 }}>
         {inviteToken ? (
           <InviteLanding
@@ -1385,7 +1418,7 @@ const Agent = () => {
           />
         ) : (
           <MemberDashboard
-            profile={profile} group={group} leader={leader}
+            profile={profile} group={group} leader={leader} me={me}
             leaderboard={leaderboard} reload={loadAll}
           />
         )}
