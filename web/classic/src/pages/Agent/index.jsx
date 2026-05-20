@@ -322,7 +322,7 @@ const Agent = () => {
             </div>
           )}
 
-          {/* 组长：查看组员联系方式 */}
+          {/* 组长：查看组员列表 */}
           {groupData.my_role === 'leader' && (
             <div style={{ marginBottom: 16 }}>
               <Divider />
