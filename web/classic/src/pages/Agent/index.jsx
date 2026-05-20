@@ -28,7 +28,7 @@ const injectStyles = () => {
     }
     .agent-v3-root {
       min-height: 100vh;
-      padding: 24px;
+      padding: 80px 24px 24px;
       background: linear-gradient(125deg, #C724B1 0%, #6E3FE7 35%, #3D7DF0 65%, #4FC3F7 100%);
       background-size: 300% 300%;
       animation: agentBgFlow 18s ease infinite;
@@ -163,6 +163,8 @@ const injectStyles = () => {
     .agent-v3-rank.r2 { background: linear-gradient(135deg, #c0c0c0, #888); }
     .agent-v3-rank.r3 { background: linear-gradient(135deg, #cd7f32, #8b4513); }
     .agent-v3-rank.r4, .agent-v3-rank.r5 { background: linear-gradient(135deg, #C724B1, #6E3FE7); }
+    .agent-required { color: #ff3b6b; font-weight: 700; margin-left: 2px; }
+    .agent-required { color: #ff3b6b; font-weight: 700; margin-left: 2px; }
   `;
   document.head.appendChild(style);
 };
@@ -255,11 +257,6 @@ const IntroPage = ({ onApply, leaderboard }) => {
         </Card>
       </div>
 
-      <div style={{ textAlign: 'center', marginTop: 32 }}>
-        <Button className="agent-v3-cta" onClick={onApply}>
-          🚀 立即开通代理
-        </Button>
-      </div>
     </div>
   );
 };
@@ -269,7 +266,8 @@ const IntroPage = ({ onApply, leaderboard }) => {
 /* ================================================================== */
 const ProfileForm = ({ initial, onSave, onCancel, mode = 'create' }) => {
   const [form, setForm] = useState({
-    nickname: initial?.nickname || '',
+    name: initial?.name || initial?.nickname || '',
+    nickname: initial?.nickname || initial?.name || '',
     avatar: initial?.avatar || '',
     wechat: initial?.wechat || '',
     phone: initial?.phone || '',
@@ -280,12 +278,14 @@ const ProfileForm = ({ initial, onSave, onCancel, mode = 'create' }) => {
   const [saving, setSaving] = useState(false);
 
   const submit = async () => {
-    if (!form.nickname || !form.wechat || !form.phone) {
-      Toast.warning('昵称、微信、电话为必填');
+    if (!form.name || !form.wechat || !form.phone) {
+      Toast.warning('姓名、微信、电话为必填');
       return;
     }
     setSaving(true);
-    try { await onSave(form); }
+    try {
+      await onSave({ ...form, nickname: form.nickname || form.name });
+    }
     finally { setSaving(false); }
   };
 
@@ -298,19 +298,23 @@ const ProfileForm = ({ initial, onSave, onCancel, mode = 'create' }) => {
       <Divider />
       <Space vertical spacing="loose" style={{ width: '100%' }}>
         <div>
-          <Text strong>昵称 *</Text>
-          <Input value={form.nickname} onChange={(v) => setForm({ ...form, nickname: v })} placeholder="显示给组员的名字" />
+          <Text strong>姓名<span className="agent-required">*</span></Text>
+          <Input value={form.name} onChange={(v) => setForm({ ...form, name: v, nickname: form.nickname || v })} placeholder="你的真实姓名" />
+        </div>
+        <div>
+          <Text strong>昵称（可选）</Text>
+          <Input value={form.nickname} onChange={(v) => setForm({ ...form, nickname: v })} placeholder="显示给组员的名字（留空则用姓名）" />
         </div>
         <div>
           <Text strong>头像 URL</Text>
           <Input value={form.avatar} onChange={(v) => setForm({ ...form, avatar: v })} placeholder="https://..." />
         </div>
         <div>
-          <Text strong>微信号 *</Text>
+          <Text strong>微信号<span className="agent-required">*</span></Text>
           <Input value={form.wechat} onChange={(v) => setForm({ ...form, wechat: v })} />
         </div>
         <div>
-          <Text strong>电话 *</Text>
+          <Text strong>电话<span className="agent-required">*</span></Text>
           <Input value={form.phone} onChange={(v) => setForm({ ...form, phone: v })} />
         </div>
         <div>
@@ -354,7 +358,7 @@ const GroupCreateForm = ({ onSave }) => {
       <Divider />
       <Space vertical spacing="loose" style={{ width: '100%' }}>
         <div>
-          <Text strong>小组名称 *</Text>
+          <Text strong>小组名称<span className="agent-required">*</span></Text>
           <Input value={form.name} onChange={(v) => setForm({ ...form, name: v })} />
         </div>
         <div>
