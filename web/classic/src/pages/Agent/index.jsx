@@ -6,7 +6,7 @@ import {
 } from '@douyinfe/semi-ui';
 import {
   IconUser, IconPhone, IconLink, IconGift, IconCopy,
-  IconUserGroup, IconPlus, IconSetting, IconQrCode, IconTrophy,
+  IconUserGroup, IconPlus, IconSetting, IconQrCode, IconStar,
   IconCrown, IconExit, IconRefresh,
 } from '@douyinfe/semi-icons';
 import { API } from '../../helpers';
@@ -313,7 +313,7 @@ const Agent = () => {
         }}
       >
         <Space>
-          <IconTrophy style={{ fontSize: 26, color: '#fff' }} />
+          <IconStar style={{ fontSize: 26, color: '#fff' }} />
           <div>
             <div style={{ color: '#fff', fontWeight: 600, fontSize: 15 }}>本周推广排行榜</div>
             <div style={{ color: 'rgba(255,255,255,.85)', fontSize: 12 }}>
@@ -655,7 +655,7 @@ const Agent = () => {
       {/* 排行榜 Modal                                                   */}
       {/* =========================================================== */}
       <Modal
-        title={<Space><IconTrophy style={{ color: '#ffd200' }} /><span>本周推广排行榜</span></Space>}
+        title={<Space><IconStar style={{ color: '#ffd200' }} /><span>本周推广排行榜</span></Space>}
         visible={lbVisible}
         onCancel={() => setLbVisible(false)}
         footer={<Button onClick={() => setLbVisible(false)}>关闭</Button>}
