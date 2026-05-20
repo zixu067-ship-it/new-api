@@ -32,7 +32,7 @@ import React, { useEffect, useState } from 'react';
       setLoading(false);
     };
 
-    
+    const handleAccept = async () => {
       setAccepting(true);
       try {
         const res = await API.post(`/api/agent/invite/${token}/accept`);
@@ -89,6 +89,7 @@ import React, { useEffect, useState } from 'react';
               </Card>
             )}
 
+            <Banner
             <Banner
               type='info'
               icon={null}
