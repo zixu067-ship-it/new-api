@@ -266,14 +266,13 @@ const IntroPage = ({ onApply, leaderboard }) => {
 /* ================================================================== */
 const ProfileForm = ({ initial, onSave, onCancel, mode = 'create' }) => {
   const [form, setForm] = useState({
-    name: initial?.name || initial?.nickname || '',
-    nickname: initial?.nickname || initial?.name || '',
+    name: initial?.real_name || initial?.name || initial?.nickname || '',
+    nickname: initial?.nickname || initial?.real_name || initial?.name || '',
     avatar: initial?.avatar || '',
-    wechat: initial?.wechat || '',
+    wechat: initial?.wechat_id || initial?.wechat || '',
     phone: initial?.phone || '',
-    payment_qr: initial?.payment_qr || '',
+    payment_qr: initial?.wechat_qr_url || initial?.payment_qr || '',
     slogan: initial?.slogan || '',
-    ...initial,
   });
   const [saving, setSaving] = useState(false);
 
@@ -284,7 +283,15 @@ const ProfileForm = ({ initial, onSave, onCancel, mode = 'create' }) => {
     }
     setSaving(true);
     try {
-      await onSave({ ...form, nickname: form.nickname || form.name });
+      await onSave({
+        real_name: form.name,
+        nickname: form.nickname || form.name,
+        avatar: form.avatar,
+        wechat_id: form.wechat,
+        phone: form.phone,
+        wechat_qr_url: form.payment_qr,
+        slogan: form.slogan,
+      });
     }
     finally { setSaving(false); }
   };
@@ -720,7 +727,7 @@ const LeaderDashboard = ({ profile, group, members, leaderboard, reload }) => {
             <Title heading={5}>个人资料</Title>
             <Card>
               <p><b>昵称：</b>{profile?.nickname}</p>
-              <p><b>微信：</b>{profile?.wechat}　<b>电话：</b>{profile?.phone}</p>
+              <p><b>微信：</b>{profile?.wechat_id || profile?.wechat}　<b>电话：</b>{profile?.phone}</p>
               <p><b>宣传语：</b>{profile?.slogan || '-'}</p>
               <Button icon={<IconEdit />} onClick={() => setEditProfile(true)}>修改个人资料</Button>
             </Card>
@@ -876,11 +883,11 @@ const MemberDashboard = ({ profile, group, leader, leaderboard, reload }) => {
           <div>
             <div><b>{leader?.nickname}</b></div>
             <div style={{ color: '#666', marginTop: 4 }}>
-              微信：{leader?.wechat || '-'}　电话：{leader?.phone || '-'}
+              微信：{leader?.wechat_id || leader?.wechat || '-'}　电话：{leader?.phone || '-'}
             </div>
             {leader?.slogan && <Paragraph style={{ marginTop: 8 }}>"{leader.slogan}"</Paragraph>}
-            {leader?.payment_qr && (
-              <a href={leader.payment_qr} target="_blank" rel="noreferrer">查看收款码</a>
+            {(leader?.wechat_qr_url || leader?.payment_qr) && (
+              <a href={leader.wechat_qr_url || leader.payment_qr} target="_blank" rel="noreferrer">查看收款码</a>
             )}
           </div>
         </Space>
@@ -947,9 +954,6 @@ const Agent = () => {
   const loadAll = async () => {
     setLoading(true);
     try {
-      const lb = await API.get('/api/agent/leaderboard');
-      if (lb.data.success) setLeaderboard(lb.data.data || []);
-
       const r = await API.get('/api/agent/profile');
       if (!r.data.success || !r.data.data) {
         setPhase('intro');
