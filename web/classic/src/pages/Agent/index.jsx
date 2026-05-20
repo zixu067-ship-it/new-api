@@ -71,7 +71,7 @@ import React, { useEffect, useState } from 'react';
     }
 
     return (
-      <div style={{ maxWidth: 600, margin: '40px auto', padding: '0 16px' }}>
+      <div style={{ maxWidth: 600, margin: '0 auto', padding: '80px 16px 40px' }}>
         <Card>
           <Space vertical align='start' style={{ width: '100%' }}>
             <Space align='center'>
