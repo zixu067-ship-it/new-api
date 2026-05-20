@@ -1,933 +1,1029 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import {
   Card, Button, Toast, Typography, Space, Spin, Tag, Banner,
-  Modal, InputNumber, Divider, Avatar, Input, Form, Tabs, TabPane,
-  Steps, Step, Descriptions,
+  Modal, InputNumber, Avatar, Input, Form, Divider, Empty, Tooltip,
 } from '@douyinfe/semi-ui';
 import {
   IconUser, IconPhone, IconLink, IconGift, IconCopy,
-  IconUserGroup, IconPlus, IconSetting, IconQrCode, IconStar,
-  IconCrown, IconExit, IconRefresh,
+  IconUserGroup, IconPlus, IconSetting, IconStar,
+  IconCrown, IconExit, IconRefresh, IconHome, IconGlobeStroke,
+  IconBell, IconEdit, IconDelete, IconSend,
 } from '@douyinfe/semi-icons';
 import { API } from '../../helpers';
 
 const { Title, Text, Paragraph } = Typography;
 
-/* ------------------------------------------------------------------ */
-/*  小工具                                                               */
-/* ------------------------------------------------------------------ */
-const fmtDiscount = (v) => {
-  const n = Math.round(parseFloat(v) * 100);
-  return isNaN(n) ? '--' : n;
+/* ================================================================== */
+/*  样式：动态渐变背景 + 玻璃拟态                                          */
+/* ================================================================== */
+const injectStyles = () => {
+  if (document.getElementById('agent-v3-styles')) return;
+  const style = document.createElement('style');
+  style.id = 'agent-v3-styles';
+  style.innerHTML = `
+    @keyframes agentBgFlow {
+      0%   { background-position: 0% 50%; }
+      50%  { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    .agent-v3-root {
+      min-height: 100vh;
+      padding: 24px;
+      background: linear-gradient(125deg, #C724B1 0%, #6E3FE7 35%, #3D7DF0 65%, #4FC3F7 100%);
+      background-size: 300% 300%;
+      animation: agentBgFlow 18s ease infinite;
+      position: relative;
+    }
+    .agent-v3-root::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: radial-gradient(circle at 20% 20%, rgba(255,255,255,0.12), transparent 40%),
+                  radial-gradient(circle at 80% 80%, rgba(255,255,255,0.08), transparent 50%);
+      pointer-events: none;
+    }
+    .agent-glass {
+      background: rgba(255,255,255,0.92);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-radius: 16px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06);
+      border: 1px solid rgba(255,255,255,0.4);
+    }
+    .agent-glass-dark {
+      background: rgba(20,20,40,0.65);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-radius: 16px;
+      color: #fff;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+      border: 1px solid rgba(255,255,255,0.15);
+    }
+    .agent-v3-banner {
+      background: linear-gradient(90deg, rgba(255,215,0,0.95), rgba(255,165,0,0.9));
+      color: #2a1a00;
+      padding: 10px 20px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      display: flex; align-items: center; gap: 10px;
+      font-weight: 600;
+      box-shadow: 0 4px 16px rgba(255,140,0,0.3);
+    }
+    .agent-v3-hero {
+      padding: 60px 40px;
+      text-align: center;
+      color: #fff;
+    }
+    .agent-v3-hero-title {
+      font-size: 48px; font-weight: 800;
+      background: linear-gradient(90deg, #fff, #ffd9f4);
+      -webkit-background-clip: text; background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 16px;
+      letter-spacing: 2px;
+    }
+    .agent-v3-hero-sub {
+      font-size: 18px; opacity: 0.92; max-width: 720px; margin: 0 auto 32px;
+      line-height: 1.8;
+    }
+    .agent-v3-feat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      max-width: 1100px; margin: 0 auto 32px;
+    }
+    .agent-v3-feat-card {
+      padding: 20px; text-align: left;
+    }
+    .agent-v3-feat-icon {
+      font-size: 28px; margin-bottom: 8px;
+    }
+    .agent-v3-cta {
+      background: linear-gradient(90deg, #ff4d8d, #ff6b35) !important;
+      border: none !important;
+      color: #fff !important;
+      font-size: 18px !important; font-weight: 700 !important;
+      padding: 14px 36px !important; height: auto !important;
+      border-radius: 999px !important;
+      box-shadow: 0 8px 24px rgba(255,77,141,0.5) !important;
+    }
+    .agent-v3-cta:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 32px rgba(255,77,141,0.6) !important;
+    }
+    .agent-v3-layout {
+      display: grid;
+      grid-template-columns: 240px 1fr;
+      gap: 20px;
+      max-width: 1280px;
+      margin: 0 auto;
+    }
+    .agent-v3-sidebar {
+      padding: 16px; height: fit-content; position: sticky; top: 20px;
+    }
+    .agent-v3-sidebar-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px 14px; border-radius: 10px;
+      cursor: pointer; transition: all 0.2s;
+      color: #444; font-weight: 500; margin-bottom: 4px;
+    }
+    .agent-v3-sidebar-item:hover {
+      background: rgba(199,36,177,0.08);
+    }
+    .agent-v3-sidebar-item.active {
+      background: linear-gradient(90deg, #C724B1, #6E3FE7);
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(110,63,231,0.3);
+    }
+    .agent-v3-content { padding: 24px; min-height: 600px; }
+    .agent-v3-stat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 14px; margin-bottom: 20px;
+    }
+    .agent-v3-stat {
+      padding: 16px; border-radius: 12px;
+      background: linear-gradient(135deg, #f6e8ff 0%, #e0f2ff 100%);
+      border: 1px solid rgba(199,36,177,0.15);
+    }
+    .agent-v3-stat-label { font-size: 13px; color: #888; }
+    .agent-v3-stat-value {
+      font-size: 26px; font-weight: 700;
+      background: linear-gradient(90deg, #C724B1, #4FC3F7);
+      -webkit-background-clip: text; background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-top: 4px;
+    }
+    .agent-v3-rank {
+      display: inline-block;
+      width: 28px; height: 28px; line-height: 28px; text-align: center;
+      border-radius: 50%; color: #fff; font-weight: 700;
+      background: #aaa; font-size: 14px;
+    }
+    .agent-v3-rank.r1 { background: linear-gradient(135deg, #ffd700, #ff8a00); }
+    .agent-v3-rank.r2 { background: linear-gradient(135deg, #c0c0c0, #888); }
+    .agent-v3-rank.r3 { background: linear-gradient(135deg, #cd7f32, #8b4513); }
+    .agent-v3-rank.r4, .agent-v3-rank.r5 { background: linear-gradient(135deg, #C724B1, #6E3FE7); }
+  `;
+  document.head.appendChild(style);
 };
 
-const copyText = (text) =>
-  navigator.clipboard.writeText(text).then(() => Toast.success('已复制'));
+/* ================================================================== */
+/*  小工具                                                               */
+/* ================================================================== */
+const pct = (v) => {
+  const n = parseFloat(v);
+  if (isNaN(n)) return '--';
+  return `${(n * 100).toFixed(0)}%`;
+};
 
-/* ------------------------------------------------------------------ */
-/*  主组件                                                               */
-/* ------------------------------------------------------------------ */
-const Agent = () => {
-  /* ---------- 基础状态 ---------- */
-  const [loading, setLoading] = useState(true);
+const discountStr = (v) => {
+  const n = parseFloat(v);
+  if (isNaN(n)) return '--';
+  const tenths = (n * 10).toFixed(1);
+  return `${tenths} 折`;
+};
+
+const copyText = (t) =>
+  navigator.clipboard.writeText(t).then(() => Toast.success('已复制'));
+
+/* ================================================================== */
+/*  介绍页：访客 / 未注册代理                                              */
+/* ================================================================== */
+const IntroPage = ({ onApply, leaderboard }) => {
+  const top = leaderboard?.[0];
+  return (
+    <div>
+      {top && (
+        <div className="agent-v3-banner">
+          <IconCrown style={{ fontSize: 18 }} />
+          <span>本周冠军：<b>{top.group_name}</b> · 周收益 ¥{Number(top.weekly_revenue || 0).toFixed(2)} · 已解锁 +10% 分红加成 🎉</span>
+        </div>
+      )}
+
+      <div className="agent-v3-hero">
+        <div className="agent-v3-hero-title">💎 加入代理计划</div>
+        <div className="agent-v3-hero-sub">
+          组建你自己的小组、拉好友一起赚 · 最高 70% 利润分红 · 每周结算
+        </div>
+        <Button className="agent-v3-cta" onClick={onApply}>
+          🚀 我要成为代理
+        </Button>
+      </div>
+
+      <div className="agent-v3-feat-grid">
+        <Card className="agent-glass agent-v3-feat-card">
+          <div className="agent-v3-feat-icon">📊</div>
+          <Title heading={5}>什么是代理？</Title>
+          <Text type="tertiary">
+            代理是平台合作伙伴。你可以建小组，邀请朋友加入，从用户充值中拿利润分红。
+          </Text>
+        </Card>
+        <Card className="agent-glass agent-v3-feat-card">
+          <div className="agent-v3-feat-icon">💰</div>
+          <Title heading={5}>分红是怎么算的？</Title>
+          <Text type="tertiary">
+            每个新组默认分得利润的 25%。比如卖出 100 元、利润 50 元，小组拿 12.5 元。
+          </Text>
+        </Card>
+        <Card className="agent-glass agent-v3-feat-card">
+          <div className="agent-v3-feat-icon">🏆</div>
+          <Title heading={5}>排行榜加成</Title>
+          <Text type="tertiary">
+            每周结算一次。冲进前 5 的小组，下周分红额外 +10%，最高可叠到 70%。
+          </Text>
+        </Card>
+        <Card className="agent-glass agent-v3-feat-card">
+          <div className="agent-v3-feat-icon">🌐</div>
+          <Title heading={5}>专属镜像站</Title>
+          <Text type="tertiary">
+            每个小组配一个镜像链接，组长自定义充值折扣，吸引用户进站充值。
+          </Text>
+        </Card>
+        <Card className="agent-glass agent-v3-feat-card">
+          <div className="agent-v3-feat-icon">👥</div>
+          <Title heading={5}>组员管理</Title>
+          <Text type="tertiary">
+            组长生成专属邀请链接，给每位组员单独设定分红比例。可重复生成不限次。
+          </Text>
+        </Card>
+        <Card className="agent-glass agent-v3-feat-card">
+          <div className="agent-v3-feat-icon">📱</div>
+          <Title heading={5}>每周打款</Title>
+          <Text type="tertiary">
+            主管每周向组长打款，组长再分给组员。后台留好微信、电话、收款码即可。
+          </Text>
+        </Card>
+      </div>
+
+      <div style={{ textAlign: 'center', marginTop: 32 }}>
+        <Button className="agent-v3-cta" onClick={onApply}>
+          🚀 立即开通代理
+        </Button>
+      </div>
+    </div>
+  );
+};
+
+/* ================================================================== */
+/*  资料填写                                                             */
+/* ================================================================== */
+const ProfileForm = ({ initial, onSave, onCancel, mode = 'create' }) => {
+  const [form, setForm] = useState({
+    nickname: initial?.nickname || '',
+    avatar: initial?.avatar || '',
+    wechat: initial?.wechat || '',
+    phone: initial?.phone || '',
+    payment_qr: initial?.payment_qr || '',
+    slogan: initial?.slogan || '',
+    ...initial,
+  });
   const [saving, setSaving] = useState(false);
-  const [profile, setProfile] = useState(null);         // 我的代理资料
-  const [isAgent, setIsAgent] = useState(false);
-  const [groupData, setGroupData] = useState(null);     // 小组数据（含 my_role）
-  const [members, setMembers] = useState([]);           // 组员列表（组长可见）
-  const [leaderInfo, setLeaderInfo] = useState(null);   // 组长信息（组员可见）
-  const [leaderboard, setLeaderboard] = useState([]);   // 排行榜
 
-  /* ---------- 表单 ---------- */
-  const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [wechat, setWechat] = useState('');
-  const [payQr, setPayQr] = useState('');
+  const submit = async () => {
+    if (!form.nickname || !form.wechat || !form.phone) {
+      Toast.warning('昵称、微信、电话为必填');
+      return;
+    }
+    setSaving(true);
+    try { await onSave(form); }
+    finally { setSaving(false); }
+  };
 
-  /* ---------- 小组创建/编辑 ---------- */
-  const [createVisible, setCreateVisible] = useState(false);
-  const [editVisible, setEditVisible] = useState(false);
-  const [gName, setGName] = useState('');
-  const [gSlogan, setGSlogan] = useState('');
-  const [gMsg, setGMsg] = useState('');
-  const [gAvatar, setGAvatar] = useState('');
-  const [gDefDiscount, setGDefDiscount] = useState(0.95);
-  const [gRecDiscount, setGRecDiscount] = useState(0.95);
+  return (
+    <Card className="agent-glass agent-v3-content" style={{ maxWidth: 720, margin: '0 auto' }}>
+      <Title heading={3} style={{ marginBottom: 8 }}>
+        {mode === 'create' ? '📝 填写代理资料' : '✏️ 修改代理资料'}
+      </Title>
+      <Text type="tertiary">填完即可建立你自己的小组（联系方式仅小组内可见 + 主管后台）</Text>
+      <Divider />
+      <Space vertical spacing="loose" style={{ width: '100%' }}>
+        <div>
+          <Text strong>昵称 *</Text>
+          <Input value={form.nickname} onChange={(v) => setForm({ ...form, nickname: v })} placeholder="显示给组员的名字" />
+        </div>
+        <div>
+          <Text strong>头像 URL</Text>
+          <Input value={form.avatar} onChange={(v) => setForm({ ...form, avatar: v })} placeholder="https://..." />
+        </div>
+        <div>
+          <Text strong>微信号 *</Text>
+          <Input value={form.wechat} onChange={(v) => setForm({ ...form, wechat: v })} />
+        </div>
+        <div>
+          <Text strong>电话 *</Text>
+          <Input value={form.phone} onChange={(v) => setForm({ ...form, phone: v })} />
+        </div>
+        <div>
+          <Text strong>收款码 URL</Text>
+          <Input value={form.payment_qr} onChange={(v) => setForm({ ...form, payment_qr: v })} placeholder="https://... 上传后图片直链" />
+        </div>
+        <div>
+          <Text strong>个人宣传语</Text>
+          <Input value={form.slogan} onChange={(v) => setForm({ ...form, slogan: v })} placeholder="一句话介绍自己" />
+        </div>
+      </Space>
+      <Divider />
+      <Space>
+        <Button theme="solid" type="primary" loading={saving} onClick={submit}>
+          {mode === 'create' ? '保存并下一步' : '保存修改'}
+        </Button>
+        {onCancel && <Button onClick={onCancel}>取消</Button>}
+      </Space>
+    </Card>
+  );
+};
 
-  /* ---------- 邀请链接 ---------- */
-  const [inviteVisible, setInviteVisible] = useState(false);
+/* ================================================================== */
+/*  小组创建                                                             */
+/* ================================================================== */
+const GroupCreateForm = ({ onSave }) => {
+  const [form, setForm] = useState({ name: '', slogan: '', message_to_members: '' });
+  const [saving, setSaving] = useState(false);
+
+  const submit = async () => {
+    if (!form.name) { Toast.warning('小组名称必填'); return; }
+    setSaving(true);
+    try { await onSave(form); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <Card className="agent-glass agent-v3-content" style={{ maxWidth: 720, margin: '0 auto' }}>
+      <Title heading={3}>🏗️ 创建你的小组</Title>
+      <Text type="tertiary">小组初始分红比例 25%，进入排行榜前 5 后可解锁 +10% / 周，最高 70%</Text>
+      <Divider />
+      <Space vertical spacing="loose" style={{ width: '100%' }}>
+        <div>
+          <Text strong>小组名称 *</Text>
+          <Input value={form.name} onChange={(v) => setForm({ ...form, name: v })} />
+        </div>
+        <div>
+          <Text strong>小组宣传语</Text>
+          <Input value={form.slogan} onChange={(v) => setForm({ ...form, slogan: v })} />
+        </div>
+        <div>
+          <Text strong>对组员说的话</Text>
+          <Input.TextArea value={form.message_to_members} onChange={(v) => setForm({ ...form, message_to_members: v })} rows={3} />
+        </div>
+      </Space>
+      <Divider />
+      <Button theme="solid" type="primary" loading={saving} onClick={submit}>
+        🚀 创建小组
+      </Button>
+    </Card>
+  );
+};
+
+/* ================================================================== */
+/*  组长仪表盘                                                            */
+/* ================================================================== */
+const LeaderDashboard = ({ profile, group, members, leaderboard, reload }) => {
+  const [tab, setTab] = useState('overview');
+  const [editGroup, setEditGroup] = useState(false);
+  const [editProfile, setEditProfile] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
   const [invitePct, setInvitePct] = useState(20);
-  const [inviteUrl, setInviteUrl] = useState('');
-  const [inviteLoading, setInviteLoading] = useState(false);
+  const [inviteToken, setInviteToken] = useState(null);
+  const [editMember, setEditMember] = useState(null);
+  const [editPct, setEditPct] = useState(0);
+  const [mirrorDiscount, setMirrorDiscount] = useState(95);
 
-  /* ---------- 弹窗 ---------- */
-  const [lbVisible, setLbVisible] = useState(false);
-  const [kickId, setKickId] = useState(null);
-  const [leaveVisible, setLeaveVisible] = useState(false);
-  const [transferVisible, setTransferVisible] = useState(false);
-  const [transferToId, setTransferToId] = useState(null);
-  const [editShareMember, setEditShareMember] = useState(null);
-  const [editSharePct, setEditSharePct] = useState(0);
+  const myRank = useMemo(() => {
+    const idx = leaderboard.findIndex((g) => g.group_id === group?.id);
+    return idx >= 0 ? idx + 1 : null;
+  }, [leaderboard, group]);
 
-  /* ================================================================== */
-  /*  初始化                                                              */
-  /* ================================================================== */
-  useEffect(() => { loadAll(); }, []);
+  const baseShare = parseFloat(group?.base_share_pct || 0.25);
+  const bonusShare = parseFloat(group?.bonus_share_pct || 0);
+  const totalShare = Math.min(baseShare + bonusShare, 0.7);
+
+  const usedPct = (members || []).reduce((s, m) => s + parseFloat(m.share_pct_in_group || 0), 0);
+  const remainPct = Math.max(0, 1 - usedPct);
+
+  const handleSaveGroup = async (vals) => {
+    const r = await API.put('/api/agent/group', vals);
+    if (r.data.success) {
+      Toast.success('已保存');
+      setEditGroup(false);
+      reload();
+    } else Toast.error(r.data.message || '保存失败');
+  };
+
+  const handleSaveProfile = async (vals) => {
+    const r = await API.post('/api/agent/profile', vals);
+    if (r.data.success) {
+      Toast.success('已保存');
+      setEditProfile(false);
+      reload();
+    } else Toast.error(r.data.message || '保存失败');
+  };
+
+  const generateInvite = async () => {
+    if (invitePct <= 0 || invitePct > 100) {
+      Toast.warning('邀请比例需在 1-100 之间');
+      return;
+    }
+    const r = await API.post('/api/agent/group/invite', {
+      share_pct_in_group: invitePct / 100,
+    });
+    if (r.data.success) {
+      setInviteToken(r.data.data.token);
+      Toast.success('已生成邀请链接');
+    } else Toast.error(r.data.message || '生成失败');
+  };
+
+  const inviteUrl = inviteToken ? `${window.location.origin}/agent/invite/${inviteToken}` : '';
+
+  const updateMember = async () => {
+    if (!editMember) return;
+    const r = await API.put(`/api/agent/group/member/${editMember.user_id}`, {
+      share_pct_in_group: editPct / 100,
+    });
+    if (r.data.success) {
+      Toast.success('已更新');
+      setEditMember(null);
+      reload();
+    } else Toast.error(r.data.message || '更新失败');
+  };
+
+  const kickMember = async (m) => {
+    Modal.confirm({
+      title: '移除组员？',
+      content: `确认将 ${m.username} 移出小组？`,
+      onOk: async () => {
+        const r = await API.delete(`/api/agent/group/member/${m.user_id}`);
+        if (r.data.success) { Toast.success('已移除'); reload(); }
+        else Toast.error(r.data.message || '失败');
+      },
+    });
+  };
+
+  const sidebar = [
+    { key: 'overview', icon: <IconHome />, label: '小组概览' },
+    { key: 'members',  icon: <IconUserGroup />, label: '组员管理' },
+    { key: 'invite',   icon: <IconLink />, label: '邀请链接' },
+    { key: 'mirror',   icon: <IconGlobeStroke />, label: '镜像站' },
+    { key: 'rank',     icon: <IconStar />, label: '排行榜' },
+    { key: 'settings', icon: <IconSetting />, label: '小组设置' },
+  ];
+
+  return (
+    <div className="agent-v3-layout">
+      {/* 侧边导航 */}
+      <Card className="agent-glass agent-v3-sidebar">
+        <div style={{ textAlign: 'center', padding: '12px 0 16px' }}>
+          <Avatar src={profile?.avatar} size="large" style={{ background: 'linear-gradient(135deg, #C724B1, #4FC3F7)' }}>
+            {profile?.nickname?.[0] || 'A'}
+          </Avatar>
+          <div style={{ marginTop: 8, fontWeight: 600 }}>
+            <IconCrown style={{ color: '#ffaa00', marginRight: 4 }} />
+            {profile?.nickname || '组长'}
+          </div>
+          <Tag size="small" style={{ marginTop: 4 }}>{group?.name}</Tag>
+        </div>
+        <Divider margin="8px" />
+        {sidebar.map((s) => (
+          <div
+            key={s.key}
+            className={`agent-v3-sidebar-item ${tab === s.key ? 'active' : ''}`}
+            onClick={() => setTab(s.key)}
+          >
+            {s.icon}
+            <span>{s.label}</span>
+          </div>
+        ))}
+      </Card>
+
+      {/* 主内容 */}
+      <Card className="agent-glass agent-v3-content">
+        {tab === 'overview' && (
+          <div>
+            <Title heading={3}>📊 小组概览</Title>
+            <div className="agent-v3-stat-grid" style={{ marginTop: 16 }}>
+              <div className="agent-v3-stat">
+                <div className="agent-v3-stat-label">本周排名</div>
+                <div className="agent-v3-stat-value">{myRank ? `#${myRank}` : '未上榜'}</div>
+              </div>
+              <div className="agent-v3-stat">
+                <div className="agent-v3-stat-label">基础分红</div>
+                <div className="agent-v3-stat-value">{pct(baseShare)}</div>
+              </div>
+              <div className="agent-v3-stat">
+                <div className="agent-v3-stat-label">额外加成</div>
+                <div className="agent-v3-stat-value">+{pct(bonusShare)}</div>
+              </div>
+              <div className="agent-v3-stat">
+                <div className="agent-v3-stat-label">当前总分红</div>
+                <div className="agent-v3-stat-value">{pct(totalShare)}</div>
+              </div>
+              <div className="agent-v3-stat">
+                <div className="agent-v3-stat-label">本周收益</div>
+                <div className="agent-v3-stat-value">¥{Number(group?.weekly_revenue || 0).toFixed(2)}</div>
+              </div>
+              <div className="agent-v3-stat">
+                <div className="agent-v3-stat-label">累计收益</div>
+                <div className="agent-v3-stat-value">¥{Number(group?.total_revenue || 0).toFixed(2)}</div>
+              </div>
+            </div>
+
+            <Divider />
+
+            <Title heading={5}>🧮 分红计算公式</Title>
+            <Card style={{ background: '#faf6ff', marginTop: 8 }}>
+              <Paragraph>
+                小组分红额 = 平台利润 × <b>{pct(totalShare)}</b><br/>
+                <Text type="tertiary">（基础 25% + 排行榜加成{bonusShare > 0 ? ` +${pct(bonusShare)}` : ' 0%'}，上限 70%）</Text>
+              </Paragraph>
+              <Paragraph>
+                单个组员分红 = 小组分红额 × 你给他设的百分比<br/>
+                <Text type="tertiary">所有组员加起来不能超过 100%（即整个小组分红额）</Text>
+              </Paragraph>
+              <Paragraph type="warning">
+                组员看到的"分红比例"是你设的那个数字（如 50%），他不知道这是小组分红里的 50%，仅作激励用途。
+              </Paragraph>
+            </Card>
+          </div>
+        )}
+
+        {tab === 'members' && (
+          <div>
+            <Space>
+              <Title heading={3}>👥 组员管理</Title>
+              <Tag color="violet">已分配 {(usedPct * 100).toFixed(0)}% / 剩余 {(remainPct * 100).toFixed(0)}%</Tag>
+            </Space>
+            <div style={{ marginTop: 16 }}>
+              {(!members || members.length === 0) && (
+                <Empty title="还没有组员" description="去「邀请链接」生成链接拉人吧" />
+              )}
+              {(members || []).map((m) => (
+                <Card key={m.user_id} style={{ marginBottom: 12 }}>
+                  <Space style={{ width: '100%', justifyContent: 'space-between' }} align="start">
+                    <Space align="start">
+                      <Avatar src={m.avatar}>{(m.nickname || m.username || '?')[0]}</Avatar>
+                      <div>
+                        <div><b>{m.nickname || m.username}</b> <Tag size="small">分红 {pct(m.share_pct_in_group)}</Tag></div>
+                        <div style={{ marginTop: 4, fontSize: 13, color: '#666' }}>
+                          <IconPhone size="small" /> {m.phone || '-'}
+                          微信 {m.wechat || '-'}
+                        </div>
+                        {m.payment_qr && (
+                          <a href={m.payment_qr} target="_blank" rel="noreferrer" style={{ fontSize: 13 }}>查看收款码</a>
+                        )}
+                      </div>
+                    </Space>
+                    <Space>
+                      <Button size="small" icon={<IconEdit />} onClick={() => {
+                        setEditMember(m);
+                        setEditPct(Math.round(parseFloat(m.share_pct_in_group) * 100));
+                      }}>改比例</Button>
+                      <Button size="small" type="danger" icon={<IconDelete />} onClick={() => kickMember(m)}>移除</Button>
+                    </Space>
+                  </Space>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {tab === 'invite' && (
+          <div>
+            <Title heading={3}>🔗 邀请新组员</Title>
+            <Text type="tertiary">每条邀请链接可单独设定分红比例。链接可重复生成、不限次数。</Text>
+            <Divider />
+            <Space vertical spacing="loose" style={{ width: '100%', maxWidth: 560 }}>
+              <div>
+                <Text strong>给该组员的分红比例</Text>
+                <Space>
+                  <InputNumber
+                    min={1} max={100} step={1}
+                    value={invitePct}
+                    onChange={(v) => setInvitePct(v || 0)}
+                    style={{ width: 140 }}
+                  />
+                  <Text>%</Text>
+                </Space>
+                <div style={{ marginTop: 6, color: '#888', fontSize: 13 }}>
+                  剩余可分配额度：{(remainPct * 100).toFixed(0)}%
+                  <Text type="warning">（组员看到的就是这个数字）</Text>
+                </div>
+              </div>
+              <Button theme="solid" type="primary" icon={<IconPlus />} onClick={generateInvite}>
+                生成邀请链接
+              </Button>
+              {inviteUrl && (
+                <Card style={{ background: '#f0f9ff' }}>
+                  <Text strong>邀请链接：</Text>
+                  <Input
+                    value={inviteUrl}
+                    readonly
+                    suffix={<Button icon={<IconCopy />} onClick={() => copyText(inviteUrl)}>复制</Button>}
+                  />
+                </Card>
+              )}
+            </Space>
+          </div>
+        )}
+
+        {tab === 'mirror' && (
+          <div>
+            <Title heading={3}>🌐 镜像站设置</Title>
+            <Text type="tertiary">每个小组配一个专属镜像站，组长自定义充值折扣吸引用户</Text>
+            <Divider />
+            <Space vertical spacing="loose" style={{ width: '100%', maxWidth: 560 }}>
+              <div>
+                <Text strong>镜像站路径</Text>
+                <Input
+                  value={`${window.location.origin}/m/${group?.mirror_slug || group?.id}`}
+                  readonly
+                  suffix={<Button icon={<IconCopy />} onClick={() => copyText(`${window.location.origin}/m/${group?.mirror_slug || group?.id}`)}>复制</Button>}
+                />
+              </div>
+              <div>
+                <Text strong>充值折扣（90-100，95 即 9.5 折）</Text>
+                <Space>
+                  <InputNumber
+                    min={90} max={100} step={1}
+                    value={mirrorDiscount}
+                    onChange={(v) => setMirrorDiscount(v || 100)}
+                    style={{ width: 140 }}
+                  />
+                  <Text strong style={{ color: '#C724B1' }}>= {discountStr(mirrorDiscount / 100)}</Text>
+                </Space>
+                <div style={{ marginTop: 6, color: '#888', fontSize: 13 }}>
+                  100 = 不打折，90 = 9 折（最低）
+                </div>
+              </div>
+              <Button
+                theme="solid" type="primary"
+                onClick={async () => {
+                  const r = await API.put('/api/agent/group', {
+                    mirror_discount: mirrorDiscount / 100,
+                  });
+                  if (r.data.success) { Toast.success('已保存'); reload(); }
+                  else Toast.error(r.data.message || '保存失败（后端可能尚未实现 mirror_discount）');
+                }}
+              >
+                保存折扣
+              </Button>
+            </Space>
+          </div>
+        )}
+
+        {tab === 'rank' && (
+          <div>
+            <Title heading={3}>🏆 排行榜（全部小组）</Title>
+            <Text type="tertiary">每周一 0:00 结算 · 前 5 名解锁 +10% 分红，下周生效</Text>
+            <Divider />
+            {(!leaderboard || leaderboard.length === 0) ? (
+              <Empty title="暂无数据" />
+            ) : (
+              leaderboard.map((g, i) => {
+                const rk = i + 1;
+                const cls = rk <= 3 ? `r${rk}` : rk <= 5 ? 'r5' : '';
+                const mine = g.group_id === group?.id;
+                return (
+                  <Card key={g.group_id} style={{ marginBottom: 8, background: mine ? '#fff5fa' : undefined, border: mine ? '2px solid #C724B1' : undefined }}>
+                    <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+                      <Space>
+                        <span className={`agent-v3-rank ${cls}`}>{rk}</span>
+                        <b>{g.group_name}</b>
+                        {mine && <Tag color="violet">我的小组</Tag>}
+                        {rk <= 5 && <Tag color="orange">+10% 加成中</Tag>}
+                      </Space>
+                      <Space>
+                        <Text>周收益 ¥{Number(g.weekly_revenue || 0).toFixed(2)}</Text>
+                      </Space>
+                    </Space>
+                  </Card>
+                );
+              })
+            )}
+          </div>
+        )}
+
+        {tab === 'settings' && (
+          <div>
+            <Title heading={3}>⚙️ 小组与个人设置</Title>
+            <Divider />
+            <Title heading={5}>小组信息</Title>
+            <Card style={{ marginBottom: 16 }}>
+              <p><b>名称：</b>{group?.name}</p>
+              <p><b>宣传语：</b>{group?.slogan || '-'}</p>
+              <p><b>对组员的话：</b>{group?.message_to_members || '-'}</p>
+              <Button icon={<IconEdit />} onClick={() => setEditGroup(true)}>修改小组信息</Button>
+            </Card>
+
+            <Title heading={5}>个人资料</Title>
+            <Card>
+              <p><b>昵称：</b>{profile?.nickname}</p>
+              <p><b>微信：</b>{profile?.wechat}　<b>电话：</b>{profile?.phone}</p>
+              <p><b>宣传语：</b>{profile?.slogan || '-'}</p>
+              <Button icon={<IconEdit />} onClick={() => setEditProfile(true)}>修改个人资料</Button>
+            </Card>
+          </div>
+        )}
+      </Card>
+
+      {/* 修改组员比例弹窗 */}
+      <Modal
+        title="修改组员分红比例"
+        visible={!!editMember}
+        onCancel={() => setEditMember(null)}
+        onOk={updateMember}
+      >
+        <Space>
+          <InputNumber min={0} max={100} step={1} value={editPct} onChange={(v) => setEditPct(v || 0)} />
+          <Text>%</Text>
+        </Space>
+        <div style={{ marginTop: 8, color: '#888', fontSize: 13 }}>
+          当前剩余可分配：{((remainPct + parseFloat(editMember?.share_pct_in_group || 0)) * 100).toFixed(0)}%
+        </div>
+      </Modal>
+
+      {/* 修改小组弹窗 */}
+      <Modal
+        title="修改小组信息"
+        visible={editGroup}
+        onCancel={() => setEditGroup(false)}
+        footer={null}
+        width={640}
+      >
+        <GroupEditInline initial={group} onSave={handleSaveGroup} />
+      </Modal>
+
+      {/* 修改个人资料弹窗 */}
+      <Modal
+        title="修改个人资料"
+        visible={editProfile}
+        onCancel={() => setEditProfile(false)}
+        footer={null}
+        width={640}
+      >
+        <ProfileForm initial={profile} mode="edit" onSave={handleSaveProfile} onCancel={() => setEditProfile(false)} />
+      </Modal>
+    </div>
+  );
+};
+
+/* 小组信息内联编辑（弹窗里用） */
+const GroupEditInline = ({ initial, onSave }) => {
+  const [f, setF] = useState({
+    name: initial?.name || '',
+    slogan: initial?.slogan || '',
+    message_to_members: initial?.message_to_members || '',
+  });
+  const [saving, setSaving] = useState(false);
+  return (
+    <Space vertical spacing="loose" style={{ width: '100%' }}>
+      <div>
+        <Text strong>名称</Text>
+        <Input value={f.name} onChange={(v) => setF({ ...f, name: v })} />
+      </div>
+      <div>
+        <Text strong>宣传语</Text>
+        <Input value={f.slogan} onChange={(v) => setF({ ...f, slogan: v })} />
+      </div>
+      <div>
+        <Text strong>对组员说的话</Text>
+        <Input.TextArea rows={3} value={f.message_to_members} onChange={(v) => setF({ ...f, message_to_members: v })} />
+      </div>
+      <Button theme="solid" type="primary" loading={saving} onClick={async () => { setSaving(true); try { await onSave(f); } finally { setSaving(false); } }}>
+        保存
+      </Button>
+    </Space>
+  );
+};
+
+/* ================================================================== */
+/*  组员仪表盘                                                            */
+/* ================================================================== */
+const MemberDashboard = ({ profile, group, leader, leaderboard, reload }) => {
+  const [editProfile, setEditProfile] = useState(false);
+
+  const myRank = useMemo(() => {
+    const idx = leaderboard.findIndex((g) => g.group_id === group?.id);
+    return idx >= 0 ? idx + 1 : null;
+  }, [leaderboard, group]);
+
+  const handleSaveProfile = async (vals) => {
+    const r = await API.post('/api/agent/profile', vals);
+    if (r.data.success) {
+      Toast.success('已保存');
+      setEditProfile(false);
+      reload();
+    } else Toast.error(r.data.message || '保存失败');
+  };
+
+  const leave = () => {
+    Modal.confirm({
+      title: '退出小组？',
+      content: '退出后不再获得分红，可被组长重新邀请。',
+      onOk: async () => {
+        const r = await API.delete('/api/agent/group/leave');
+        if (r.data.success) { Toast.success('已退出'); reload(); }
+        else Toast.error(r.data.message || '失败');
+      },
+    });
+  };
+
+  return (
+    <div style={{ maxWidth: 960, margin: '0 auto' }}>
+      <Card className="agent-glass agent-v3-content" style={{ marginBottom: 16 }}>
+        <Space style={{ width: '100%', justifyContent: 'space-between' }} align="start">
+          <Space align="start">
+            <Avatar src={profile?.avatar} size="large">{profile?.nickname?.[0]}</Avatar>
+            <div>
+              <Title heading={4}>{profile?.nickname}</Title>
+              <Tag color="blue">小组组员</Tag>
+              <Tag color="violet">所在小组：{group?.name}</Tag>
+            </div>
+          </Space>
+          <Space>
+            <Button icon={<IconEdit />} onClick={() => setEditProfile(true)}>修改资料</Button>
+            <Button type="danger" icon={<IconExit />} onClick={leave}>退出小组</Button>
+          </Space>
+        </Space>
+      </Card>
+
+      <div className="agent-v3-stat-grid">
+        <div className="agent-v3-stat">
+          <div className="agent-v3-stat-label">我的分红比例</div>
+          <div className="agent-v3-stat-value">{pct(profile?.share_pct_in_group || 0)}</div>
+        </div>
+        <div className="agent-v3-stat">
+          <div className="agent-v3-stat-label">小组本周排名</div>
+          <div className="agent-v3-stat-value">{myRank ? `#${myRank}` : '未上榜'}</div>
+        </div>
+        <div className="agent-v3-stat">
+          <div className="agent-v3-stat-label">我的本周收益</div>
+          <div className="agent-v3-stat-value">¥{Number(profile?.weekly_revenue || 0).toFixed(2)}</div>
+        </div>
+        <div className="agent-v3-stat">
+          <div className="agent-v3-stat-label">我的累计收益</div>
+          <div className="agent-v3-stat-value">¥{Number(profile?.total_revenue || 0).toFixed(2)}</div>
+        </div>
+      </div>
+
+      <Card className="agent-glass" style={{ marginTop: 16 }}>
+        <Title heading={4}>👑 我的组长</Title>
+        <Divider />
+        <Space align="start">
+          <Avatar src={leader?.avatar} size="large">{leader?.nickname?.[0]}</Avatar>
+          <div>
+            <div><b>{leader?.nickname}</b></div>
+            <div style={{ color: '#666', marginTop: 4 }}>
+              微信：{leader?.wechat || '-'}　电话：{leader?.phone || '-'}
+            </div>
+            {leader?.slogan && <Paragraph style={{ marginTop: 8 }}>"{leader.slogan}"</Paragraph>}
+            {leader?.payment_qr && (
+              <a href={leader.payment_qr} target="_blank" rel="noreferrer">查看收款码</a>
+            )}
+          </div>
+        </Space>
+        {group?.message_to_members && (
+          <Card style={{ marginTop: 12, background: '#fff7e6' }}>
+            <Text strong>📣 组长留言：</Text>
+            <Paragraph>{group.message_to_members}</Paragraph>
+          </Card>
+        )}
+      </Card>
+
+      <Card className="agent-glass" style={{ marginTop: 16 }}>
+        <Title heading={4}>🏆 小组排行榜</Title>
+        <Divider />
+        {(!leaderboard || leaderboard.length === 0) ? (
+          <Empty title="暂无数据" />
+        ) : leaderboard.map((g, i) => {
+          const rk = i + 1;
+          const cls = rk <= 3 ? `r${rk}` : rk <= 5 ? 'r5' : '';
+          const mine = g.group_id === group?.id;
+          return (
+            <Card key={g.group_id} style={{ marginBottom: 8, background: mine ? '#fff5fa' : undefined }}>
+              <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+                <Space>
+                  <span className={`agent-v3-rank ${cls}`}>{rk}</span>
+                  <b>{g.group_name}</b>
+                  {mine && <Tag color="violet">我的小组</Tag>}
+                  {rk <= 5 && <Tag color="orange">+10% 加成中</Tag>}
+                </Space>
+                <Text>周收益 ¥{Number(g.weekly_revenue || 0).toFixed(2)}</Text>
+              </Space>
+            </Card>
+          );
+        })}
+      </Card>
+
+      <Modal
+        title="修改个人资料"
+        visible={editProfile}
+        onCancel={() => setEditProfile(false)}
+        footer={null}
+        width={640}
+      >
+        <ProfileForm initial={profile} mode="edit" onSave={handleSaveProfile} onCancel={() => setEditProfile(false)} />
+      </Modal>
+    </div>
+  );
+};
+
+/* ================================================================== */
+/*  主组件                                                               */
+/* ================================================================== */
+const Agent = () => {
+  const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState(null);
+  const [group, setGroup] = useState(null);
+  const [members, setMembers] = useState([]);
+  const [leader, setLeader] = useState(null);
+  const [leaderboard, setLeaderboard] = useState([]);
+  const [phase, setPhase] = useState('intro'); // intro | profile-form | group-create | leader | member
+
+  useEffect(() => { injectStyles(); }, []);
 
   const loadAll = async () => {
     setLoading(true);
     try {
-      const r = await API.get('/api/agent/profile');
-      if (r.data.success && r.data.data) {
-        const p = r.data.data;
-        setProfile(p);
-        setIsAgent(true);
-        setName(p.real_name || '');
-        setPhone(p.phone || '');
-        setWechat(p.wechat_id || '');
-        setPayQr(p.payment_qr_url || '');
-
-        const gr = await API.get('/api/agent/group');
-        if (gr.data.success && gr.data.data) {
-          const gd = gr.data.data;
-          setGroupData(gd);
-          prefillGroupForm(gd);
-          if (gd.my_role === 'leader') {
-            const mr = await API.get('/api/agent/group/members-profiles');
-            if (mr.data.success) setMembers(mr.data.data || []);
-          } else if (gd.my_role === 'member') {
-            const lr = await API.get('/api/agent/group/leader-profile');
-            if (lr.data.success) setLeaderInfo(lr.data.data);
-          }
-        }
-      }
-    } catch (_) {}
-    try {
       const lb = await API.get('/api/agent/leaderboard');
       if (lb.data.success) setLeaderboard(lb.data.data || []);
-    } catch (_) {}
-    setLoading(false);
-  };
 
-  const prefillGroupForm = (gd) => {
-    if (!gd) return;
-    setGName(gd.group_name || '');
-    setGSlogan(gd.slogan || '');
-    setGMsg(gd.message_to_members || '');
-    setGAvatar(gd.avatar_url || '');
-    setGDefDiscount(parseFloat(gd.default_discount) || 0.95);
-    setGRecDiscount(parseFloat(gd.recommend_discount) || 0.95);
-  };
-
-  /* ================================================================== */
-  /*  保存代理资料                                                         */
-  /* ================================================================== */
-  const saveProfile = async () => {
-    if (!name.trim() || !phone.trim() || !wechat.trim()) {
-      Toast.error('姓名、手机号、微信号为必填项');
-      return;
-    }
-    setSaving(true);
-    try {
-      const r = await API.post('/api/agent/profile', {
-        real_name: name, phone, wechat_id: wechat, payment_qr_url: payQr,
-      });
-      if (r.data.success) {
-        Toast.success(isAgent ? '资料更新成功' : '恭喜！已成为代理');
-        setIsAgent(true);
-        setProfile({ real_name: name, phone, wechat_id: wechat, payment_qr_url: payQr });
-      } else {
-        Toast.error(r.data.message || '保存失败');
+      const r = await API.get('/api/agent/profile');
+      if (!r.data.success || !r.data.data) {
+        setPhase('intro');
+        setLoading(false);
+        return;
       }
-    } catch (_) { Toast.error('网络错误'); }
-    setSaving(false);
+      setProfile(r.data.data);
+
+      const gr = await API.get('/api/agent/group');
+      if (!gr.data.success || !gr.data.data) {
+        setPhase('group-create');
+        setLoading(false);
+        return;
+      }
+      const g = gr.data.data;
+      setGroup(g);
+
+      const isLeader = g.leader_id === r.data.data.user_id;
+      if (isLeader) {
+        const mr = await API.get('/api/agent/group/members-profiles');
+        if (mr.data.success) setMembers(mr.data.data || []);
+        setPhase('leader');
+      } else {
+        const lr = await API.get('/api/agent/group/leader-profile');
+        if (lr.data.success) setLeader(lr.data.data);
+        setPhase('member');
+      }
+    } catch (e) {
+      console.error(e);
+      Toast.error('加载失败：' + (e.message || ''));
+    } finally {
+      setLoading(false);
+    }
   };
 
-  /* ================================================================== */
-  /*  创建小组                                                            */
-  /* ================================================================== */
-  const createGroup = async () => {
-    if (!gName.trim()) { Toast.error('请填写小组名称'); return; }
-    try {
-      const r = await API.post('/api/agent/group', {
-        group_name: gName, slogan: gSlogan, message_to_members: gMsg,
-        avatar_url: gAvatar,
-        default_discount: gDefDiscount,
-        recommend_discount: gRecDiscount,
-      });
-      if (r.data.success) {
-        Toast.success('小组创建成功！默认分红比例 25%');
-        setCreateVisible(false);
-        await loadAll();
-      } else { Toast.error(r.data.message); }
-    } catch (_) { Toast.error('网络错误'); }
+  useEffect(() => { loadAll(); }, []);
+
+  const handleApply = () => setPhase('profile-form');
+
+  const handleSaveProfile = async (vals) => {
+    const r = await API.post('/api/agent/profile', vals);
+    if (!r.data.success) { Toast.error(r.data.message || '保存失败'); return; }
+    Toast.success('资料已保存');
+    await loadAll();
   };
 
-  /* ================================================================== */
-  /*  编辑小组                                                            */
-  /* ================================================================== */
-  const updateGroup = async () => {
-    try {
-      const r = await API.put('/api/agent/group', {
-        group_name: gName, slogan: gSlogan, message_to_members: gMsg,
-        avatar_url: gAvatar,
-        default_discount: gDefDiscount,
-        recommend_discount: gRecDiscount,
-      });
-      if (r.data.success) {
-        Toast.success('小组信息已更新');
-        setEditVisible(false);
-        await loadAll();
-      } else { Toast.error(r.data.message); }
-    } catch (_) { Toast.error('网络错误'); }
+  const handleCreateGroup = async (vals) => {
+    const r = await API.post('/api/agent/group', vals);
+    if (!r.data.success) { Toast.error(r.data.message || '创建失败'); return; }
+    Toast.success('小组已创建');
+    await loadAll();
   };
-
-  /* ================================================================== */
-  /*  生成邀请链接                                                         */
-  /* ================================================================== */
-  const genInvite = async () => {
-    if (invitePct < 1 || invitePct > 99) { Toast.error('占比须在 1–99 之间'); return; }
-    setInviteLoading(true);
-    try {
-      const r = await API.post('/api/agent/group/invite', { share_pct_in_group: invitePct });
-      if (r.data.success) {
-        const token = r.data.data.invite_token;
-        setInviteUrl(`${window.location.origin}/agent/join/${token}`);
-        Toast.success('链接生成成功，可重复生成不同占比的链接');
-      } else { Toast.error(r.data.message || '生成失败'); }
-    } catch (_) { Toast.error('网络错误'); }
-    setInviteLoading(false);
-  };
-
-  /* ================================================================== */
-  /*  其他操作                                                            */
-  /* ================================================================== */
-  const kickMember = async () => {
-    try {
-      const r = await API.delete(`/api/agent/group/member/${kickId}`);
-      if (r.data.success) { Toast.success('已移出'); setKickId(null); await loadAll(); }
-      else Toast.error(r.data.message);
-    } catch (_) { Toast.error('网络错误'); }
-  };
-
-  const leaveGroup = async () => {
-    try {
-      const r = await API.delete('/api/agent/group/leave');
-      if (r.data.success) { Toast.success('已退出小组'); setLeaveVisible(false); await loadAll(); }
-      else Toast.error(r.data.message);
-    } catch (_) { Toast.error('网络错误'); }
-  };
-
-  const transferLeader = async () => {
-    if (!transferToId) { Toast.error('请选择要转让的组员'); return; }
-    try {
-      const r = await API.post('/api/agent/group/transfer', { new_leader_id: transferToId });
-      if (r.data.success) { Toast.success('已转让组长'); setTransferVisible(false); await loadAll(); }
-      else Toast.error(r.data.message);
-    } catch (_) { Toast.error('网络错误'); }
-  };
-
-  const updateShare = async () => {
-    try {
-      const r = await API.put(`/api/agent/group/member/${editShareMember.user_id}`, {
-        share_pct_in_group: editSharePct,
-      });
-      if (r.data.success) { Toast.success('已更新'); setEditShareMember(null); await loadAll(); }
-      else Toast.error(r.data.message);
-    } catch (_) { Toast.error('网络错误'); }
-  };
-
-  /* ================================================================== */
-  /*  Loading                                                            */
-  /* ================================================================== */
-  if (loading) return (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 300 }}>
-      <Spin size='large' />
-    </div>
-  );
-
-  /* ================================================================== */
-  /*  渲染                                                                */
-  /* ================================================================== */
-  const isLeader = groupData?.my_role === 'leader';
-  const isMember = groupData?.my_role === 'member';
-  const sharePct = groupData?.current_share_pct || 25;
-  const mirrorLink = groupData ? `${window.location.origin}/g/${groupData.group_code}` : '';
 
   return (
-    <div style={{ padding: '24px 20px 60px', maxWidth: 860, margin: '0 auto' }}>
-
-      {/* =========================================================== */}
-      {/* 顶部横幅                                                       */}
-      {/* =========================================================== */}
-      <div style={{
-        borderRadius: 14,
-        background: 'linear-gradient(135deg,#4776e6,#8e54e9)',
-        padding: '24px 28px',
-        marginBottom: 24,
-        color: '#fff',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        boxShadow: '0 6px 24px rgba(71,118,230,.35)',
-      }}>
-        <div>
-          <div style={{ fontSize: 22, fontWeight: 700, marginBottom: 6 }}>
-            <IconGift style={{ marginRight: 10, verticalAlign: 'middle' }} />
-            代理中心
+    <div className="agent-v3-root">
+      <div style={{ position: 'relative', zIndex: 1 }}>
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: 80 }}>
+            <Spin size="large" />
           </div>
-          <div style={{ opacity: 0.85, fontSize: 14 }}>
-            推广赚分红 · 每周结算 · 前五名额外 +10%
-          </div>
-        </div>
-        {groupData && (
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 38, fontWeight: 800, lineHeight: 1 }}>{sharePct}%</div>
-            <div style={{ fontSize: 12, opacity: 0.8, marginTop: 4 }}>本组分红比例</div>
-            {sharePct > 25 && (
-              <span style={{
-                display: 'inline-block', marginTop: 6, padding: '2px 8px',
-                background: 'rgba(255,200,0,.25)', borderRadius: 20, fontSize: 12,
-              }}>🏆 排行奖励</span>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* =========================================================== */}
-      {/* 排行榜入口                                                      */}
-      {/* =========================================================== */}
-      <div
-        onClick={() => setLbVisible(true)}
-        style={{
-          borderRadius: 12,
-          background: 'linear-gradient(135deg,#f7971e,#ffd200)',
-          padding: '14px 20px',
-          marginBottom: 20,
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          boxShadow: '0 4px 14px rgba(247,151,30,.3)',
-          userSelect: 'none',
-        }}
-      >
-        <Space>
-          <IconStar style={{ fontSize: 26, color: '#fff' }} />
-          <div>
-            <div style={{ color: '#fff', fontWeight: 600, fontSize: 15 }}>本周推广排行榜</div>
-            <div style={{ color: 'rgba(255,255,255,.85)', fontSize: 12 }}>
-              前五名额外 +10% 分红，上限 70%，每周一自动结算
-            </div>
-          </div>
-        </Space>
-        <span style={{ color: '#fff', fontSize: 22 }}>›</span>
-      </div>
-
-      {/* =========================================================== */}
-      {/* 代理资料                                                       */}
-      {/* =========================================================== */}
-      <Card
-        style={{ borderRadius: 12, marginBottom: 20, boxShadow: '0 2px 10px rgba(0,0,0,.07)' }}
-        title={
-          <Space>
-            <IconUser />
-            <span>我的代理资料</span>
-            {isAgent && <Tag color='green' size='small'>已认证</Tag>}
-          </Space>
-        }
-      >
-        {!isAgent && (
-          <Banner
-            type='info'
-            description='填写下方资料并提交，即可成为代理。姓名、手机号、微信号必填。'
-            style={{ marginBottom: 16, borderRadius: 8 }}
+        ) : phase === 'intro' ? (
+          <IntroPage onApply={handleApply} leaderboard={leaderboard} />
+        ) : phase === 'profile-form' ? (
+          <ProfileForm onSave={handleSaveProfile} onCancel={() => setPhase('intro')} />
+        ) : phase === 'group-create' ? (
+          <GroupCreateForm onSave={handleCreateGroup} />
+        ) : phase === 'leader' ? (
+          <LeaderDashboard
+            profile={profile} group={group} members={members}
+            leaderboard={leaderboard} reload={loadAll}
           />
-        )}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px 20px' }}>
-          <div>
-            <div style={{ fontSize: 13, color: '#666', marginBottom: 4 }}>真实姓名 *</div>
-            <Input value={name} onChange={setName} placeholder='必填' />
-          </div>
-          <div>
-            <div style={{ fontSize: 13, color: '#666', marginBottom: 4 }}>手机号 *</div>
-            <Input value={phone} onChange={setPhone} placeholder='必填' />
-          </div>
-          <div>
-            <div style={{ fontSize: 13, color: '#666', marginBottom: 4 }}>微信号 *</div>
-            <Input value={wechat} onChange={setWechat} placeholder='必填，用于联系和发工资' />
-          </div>
-          <div>
-            <div style={{ fontSize: 13, color: '#666', marginBottom: 4 }}>收款码图片链接</div>
-            <Input value={payQr} onChange={setPayQr} placeholder='https://... 选填，组长可见' />
-          </div>
-        </div>
-        <Button
-          theme='solid' type='primary' loading={saving}
-          onClick={saveProfile}
-          style={{ marginTop: 14, borderRadius: 8, paddingLeft: 28, paddingRight: 28 }}
-        >
-          {isAgent ? '保存修改' : '提交成为代理'}
-        </Button>
-      </Card>
-
-      {/* =========================================================== */}
-      {/* 未加入小组                                                      */}
-      {/* =========================================================== */}
-      {isAgent && !groupData && (
-        <Card
-          style={{ borderRadius: 12, marginBottom: 20, boxShadow: '0 2px 10px rgba(0,0,0,.07)' }}
-          title={<Space><IconUserGroup /><span>推广小组</span></Space>}
-        >
-          <div style={{ textAlign: 'center', padding: '28px 0' }}>
-            <div style={{ fontSize: 48, marginBottom: 12 }}>👥</div>
-            <Text type='secondary' style={{ display: 'block', marginBottom: 20 }}>
-              创建小组后可邀请代理加入，共同推广，按周分红。
-              <br />小组默认分红比例 25%，排行榜前五额外 +10%，上限 70%。
-            </Text>
-            <Button
-              icon={<IconPlus />} theme='solid' type='primary'
-              onClick={() => setCreateVisible(true)}
-              style={{ borderRadius: 8 }}
-            >
-              创建推广小组
-            </Button>
-          </div>
-        </Card>
-      )}
-
-      {/* =========================================================== */}
-      {/* 小组信息（已加入）                                               */}
-      {/* =========================================================== */}
-      {groupData && (
-        <Card
-          style={{ borderRadius: 12, marginBottom: 20, boxShadow: '0 2px 10px rgba(0,0,0,.07)' }}
-          title={
-            <Space>
-              {groupData.avatar_url
-                ? <Avatar src={groupData.avatar_url} size='small' shape='square' />
-                : <Avatar size='small' style={{ background: '#4776e6' }}>
-                    {(groupData.group_name || '组').charAt(0)}
-                  </Avatar>
-              }
-              <span>{groupData.group_name}</span>
-              <Tag color={isLeader ? 'orange' : 'blue'} size='small'>
-                {isLeader ? '👑 组长' : '组员'}
-              </Tag>
-            </Space>
-          }
-          extra={
-            isLeader && (
-              <Button
-                size='small' icon={<IconSetting />} theme='light'
-                onClick={() => { prefillGroupForm(groupData); setEditVisible(true); }}
-              >
-                编辑
-              </Button>
-            )
-          }
-        >
-          {/* 小组头像 + 信息 */}
-          <div style={{
-            display: 'flex', gap: 20, alignItems: 'flex-start',
-            background: '#f8f9ff', borderRadius: 10, padding: '16px 20px', marginBottom: 20,
-          }}>
-            {groupData.avatar_url
-              ? <Avatar src={groupData.avatar_url} size='extra-large' shape='square' style={{ flexShrink: 0 }} />
-              : <Avatar size='extra-large' shape='square' style={{ background: '#4776e6', fontSize: 26, flexShrink: 0 }}>
-                  {(groupData.group_name || '组').charAt(0)}
-                </Avatar>
-            }
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 700, fontSize: 18, marginBottom: 4 }}>{groupData.group_name}</div>
-              {groupData.slogan && (
-                <div style={{ color: '#888', fontSize: 13, fontStyle: 'italic', marginBottom: 10 }}>
-                  "{groupData.slogan}"
-                </div>
-              )}
-              <Space wrap>
-                <Tag color='green'>默认折扣 {fmtDiscount(groupData.default_discount)}折</Tag>
-                <Tag color='cyan'>推荐折扣 {fmtDiscount(groupData.recommend_discount)}折</Tag>
-                <Tag color='violet'>本组分红 {sharePct}%</Tag>
-              </Space>
-            </div>
-          </div>
-
-          {/* 分红说明 */}
-          {isLeader ? (
-            <Banner
-              type='success'
-              description={
-                <span>
-                  平台每周拨付总利润的 <strong>{sharePct}%</strong> 给本小组。
-                  排行榜前五可额外 +10%，上限 70%。
-                </span>
-              }
-              style={{ marginBottom: 16, borderRadius: 8 }}
-            />
-          ) : (
-            <Banner
-              type='info'
-              description={
-                <span>
-                  你在本组的分润占比：<strong>{groupData.my_share_pct_in_group}%</strong>
-                  （每周分成总额 × {groupData.my_share_pct_in_group}% 归你）
-                </span>
-              }
-              style={{ marginBottom: 16, borderRadius: 8 }}
-            />
-          )}
-
-          {/* 组长寄语（仅组员可见） */}
-          {isMember && groupData.message_to_members && (
-            <Banner
-              type='warning'
-              description={<span>💬 组长寄语：{groupData.message_to_members}</span>}
-              style={{ marginBottom: 16, borderRadius: 8 }}
-            />
-          )}
-
-          {/* 推广镜像链接 */}
-          <div style={{
-            background: '#f0f5ff', border: '1px solid #c8d8ff',
-            borderRadius: 10, padding: '14px 18px', marginBottom: 20,
-          }}>
-            <div style={{ fontWeight: 600, marginBottom: 8 }}>
-              <IconLink style={{ marginRight: 6, verticalAlign: 'middle' }} />
-              推广专属镜像链接
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-              <code style={{
-                flex: 1, background: '#e8eeff', padding: '6px 10px',
-                borderRadius: 6, fontSize: 13, wordBreak: 'break-all',
-                border: '1px solid #d0d9ff',
-              }}>
-                {mirrorLink}
-              </code>
-              <Button size='small' theme='solid' icon={<IconCopy />} onClick={() => copyText(mirrorLink)}>
-                复制
-              </Button>
-            </div>
-            <div style={{ fontSize: 12, color: '#888', marginTop: 6 }}>
-              通过此链接注册的用户自动归入本小组，享受专属折扣
-            </div>
-          </div>
-
-          {/* 组长：生成邀请链接 */}
-          {isLeader && (
-            <div style={{ marginBottom: 20 }}>
-              <Button
-                icon={<IconLink />} type='primary' theme='light'
-                onClick={() => { setInviteVisible(true); setInviteUrl(''); }}
-                style={{ borderRadius: 8 }}
-              >
-                生成组员邀请链接
-              </Button>
-              <div style={{ fontSize: 12, color: '#aaa', marginTop: 4 }}>
-                可重复生成，每次可设置不同的分润占比
-              </div>
-            </div>
-          )}
-
-          {/* 组长：组员列表 */}
-          {isLeader && (
-            <>
-              <Divider />
-              <div style={{ marginTop: 16 }}>
-                <div style={{
-                  display: 'flex', justifyContent: 'space-between',
-                  alignItems: 'center', marginBottom: 12,
-                }}>
-                  <span style={{ fontWeight: 600, fontSize: 15 }}>
-                    组员列表
-                    {members.length > 0 && (
-                      <Tag color='blue' size='small' style={{ marginLeft: 8 }}>{members.length} 人</Tag>
-                    )}
-                  </span>
-                </div>
-                {members.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '24px 0', color: '#bbb' }}>
-                    暂无组员，生成邀请链接发给代理即可邀请加入
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    {members.map((m) => (
-                      <div key={m.user_id} style={{
-                        background: '#fafafa', border: '1px solid #f0f0f0',
-                        borderRadius: 10, padding: '14px 16px',
-                        display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
-                      }}>
-                        <Space align='start' style={{ gap: 12 }}>
-                          <Avatar style={{ background: '#8e54e9', flexShrink: 0 }}>
-                            {(m.real_name || '?').charAt(0)}
-                          </Avatar>
-                          <div>
-                            <div style={{ fontWeight: 600, marginBottom: 4 }}>
-                              {m.real_name || '未填写姓名'}
-                            </div>
-                            <div style={{ color: '#666', fontSize: 13 }}>
-                              📱 {m.phone || '未填写'} &nbsp;&nbsp; 💬 {m.wechat_id || '未填写'}
-                            </div>
-                            <div style={{ fontSize: 13, marginTop: 4 }}>
-                              在组占比：<strong style={{ color: '#4776e6' }}>{m.share_pct_in_group}%</strong>
-                            </div>
-                            {m.payment_qr_url && (
-                              <Button
-                                size='small' theme='borderless' icon={<IconQrCode />}
-                                onClick={() => window.open(m.payment_qr_url, '_blank')}
-                                style={{ paddingLeft: 0, marginTop: 4 }}
-                              >
-                                查看收款码
-                              </Button>
-                            )}
-                          </div>
-                        </Space>
-                        <Space vertical style={{ gap: 6, flexShrink: 0 }}>
-                          <Button
-                            size='small' theme='light' type='primary'
-                            onClick={() => { setEditShareMember(m); setEditSharePct(m.share_pct_in_group); }}
-                          >
-                            改占比
-                          </Button>
-                          <Button
-                            size='small' type='danger' theme='borderless'
-                            onClick={() => setKickId(m.user_id)}
-                          >
-                            踢出
-                          </Button>
-                        </Space>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </>
-          )}
-
-          {/* 组员：组长联系方式 */}
-          {isMember && leaderInfo && (
-            <>
-              <Divider />
-              <div style={{ marginTop: 16, marginBottom: 16 }}>
-                <div style={{ fontWeight: 600, marginBottom: 12 }}>👑 组长联系方式</div>
-                <div style={{
-                  background: '#fffbf0', border: '1px solid #ffe4a0',
-                  borderRadius: 10, padding: '14px 18px',
-                  display: 'flex', alignItems: 'center', gap: 16,
-                }}>
-                  <Avatar size='large' style={{ background: '#f7971e', flexShrink: 0 }}>
-                    {(leaderInfo.real_name || '组').charAt(0)}
-                  </Avatar>
-                  <div>
-                    <div style={{ fontWeight: 600, marginBottom: 4 }}>{leaderInfo.real_name || '未填写'}</div>
-                    <div style={{ color: '#666', fontSize: 13 }}>
-                      📱 {leaderInfo.phone || '未填写'}
-                    </div>
-                    <div style={{ color: '#666', fontSize: 13, marginTop: 2 }}>
-                      💬 微信：{leaderInfo.wechat_id || '未填写'}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </>
-          )}
-
-          {/* 底部操作 */}
-          <Divider />
-          <div style={{ paddingTop: 8 }}>
-            {isMember && (
-              <Button type='danger' theme='borderless' icon={<IconExit />}
-                onClick={() => setLeaveVisible(true)}>
-                退出小组
-              </Button>
-            )}
-            {isLeader && (
-              <Button type='danger' theme='borderless' icon={<IconCrown />}
-                onClick={() => setTransferVisible(true)}>
-                转让组长并退出
-              </Button>
-            )}
-          </div>
-        </Card>
-      )}
-
-      {/* =========================================================== */}
-      {/* 排行榜 Modal                                                   */}
-      {/* =========================================================== */}
-      <Modal
-        title={<Space><IconStar style={{ color: '#ffd200' }} /><span>本周推广排行榜</span></Space>}
-        visible={lbVisible}
-        onCancel={() => setLbVisible(false)}
-        footer={<Button onClick={() => setLbVisible(false)}>关闭</Button>}
-        width={540}
-      >
-        <Banner
-          type='info'
-          description='每周一 0:00 自动结算。排名前 5 的小组额外获得 +10% 分红，上限 70%。'
-          style={{ marginBottom: 16, borderRadius: 8 }}
-        />
-        {leaderboard.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '30px 0', color: '#bbb' }}>
-            暂无排行数据
-          </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {leaderboard.map((item, i) => (
-              <div key={item.group_id} style={{
-                display: 'flex', alignItems: 'center', gap: 12,
-                background: i < 5 ? '#fffbee' : '#fafafa',
-                border: `1px solid ${i < 5 ? '#ffe58f' : '#f0f0f0'}`,
-                borderRadius: 10, padding: '12px 16px',
-              }}>
-                <div style={{ width: 28, textAlign: 'center', fontSize: 22 }}>
-                  {['🥇', '🥈', '🥉', '4️⃣', '5️⃣'][i] || `${i + 1}`}
-                </div>
-                {item.avatar_url
-                  ? <Avatar src={item.avatar_url} size='small' shape='square' />
-                  : <Avatar size='small' style={{ background: ['#ffd700','#c0c0c0','#cd7f32','#4776e6','#8e54e9'][i] || '#ccc' }}>
-                      {(item.group_name || '组').charAt(0)}
-                    </Avatar>
-                }
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 600 }}>{item.group_name}</div>
-                  <div style={{ color: '#888', fontSize: 12 }}>
-                    本周推广充值：¥{(item.week_revenue || 0).toFixed(2)}
-                  </div>
-                </div>
-                {i < 5 && <Tag color='amber' size='small'>+10% 分红</Tag>}
-              </div>
-            ))}
-          </div>
-        )}
-      </Modal>
-
-      {/* =========================================================== */}
-      {/* 创建小组 Modal                                                  */}
-      {/* =========================================================== */}
-      <Modal
-        title={<Space><IconPlus /><span>创建推广小组</span></Space>}
-        visible={createVisible}
-        onCancel={() => setCreateVisible(false)}
-        onOk={createGroup}
-        okText='创建小组'
-        width={520}
-      >
-        <Banner
-          type='success'
-          description='小组创建后默认分红比例 25%，进入排行榜前五可额外 +10%，上限 70%。'
-          style={{ marginBottom: 16, borderRadius: 8 }}
-        />
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div>
-            <div style={{ fontSize: 13, color: '#555', marginBottom: 4 }}>小组名称 *</div>
-            <Input value={gName} onChange={setGName} placeholder='必填' />
-          </div>
-          <div>
-            <div style={{ fontSize: 13, color: '#555', marginBottom: 4 }}>宣传语 / 口号</div>
-            <Input value={gSlogan} onChange={setGSlogan} placeholder='选填，展示在推广页' />
-          </div>
-          <div>
-            <div style={{ fontSize: 13, color: '#555', marginBottom: 4 }}>给组员的话</div>
-            <Input value={gMsg} onChange={setGMsg} placeholder='选填，仅组员可见' />
-          </div>
-          <div>
-            <div style={{ fontSize: 13, color: '#555', marginBottom: 4 }}>小组头像图片链接</div>
-            <Input value={gAvatar} onChange={setGAvatar} placeholder='https://... 选填' />
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
-            <div>
-              <div style={{ fontSize: 13, color: '#555', marginBottom: 4 }}>默认折扣（如 0.95 = 95折）</div>
-              <InputNumber value={gDefDiscount} onChange={setGDefDiscount} min={0.1} max={1} step={0.01} style={{ width: '100%' }} />
-            </div>
-            <div>
-              <div style={{ fontSize: 13, color: '#555', marginBottom: 4 }}>推荐折扣</div>
-              <InputNumber value={gRecDiscount} onChange={setGRecDiscount} min={0.1} max={1} step={0.01} style={{ width: '100%' }} />
-            </div>
-          </div>
-        </div>
-      </Modal>
-
-      {/* =========================================================== */}
-      {/* 编辑小组 Modal                                                  */}
-      {/* =========================================================== */}
-      <Modal
-        title={<Space><IconSetting /><span>编辑小组信息</span></Space>}
-        visible={editVisible}
-        onCancel={() => setEditVisible(false)}
-        onOk={updateGroup}
-        okText='保存修改'
-        width={520}
-      >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div>
-            <div style={{ fontSize: 13, color: '#555', marginBottom: 4 }}>小组名称</div>
-            <Input value={gName} onChange={setGName} />
-          </div>
-          <div>
-            <div style={{ fontSize: 13, color: '#555', marginBottom: 4 }}>宣传语 / 口号</div>
-            <Input value={gSlogan} onChange={setGSlogan} />
-          </div>
-          <div>
-            <div style={{ fontSize: 13, color: '#555', marginBottom: 4 }}>给组员的话</div>
-            <Input value={gMsg} onChange={setGMsg} />
-          </div>
-          <div>
-            <div style={{ fontSize: 13, color: '#555', marginBottom: 4 }}>小组头像图片链接</div>
-            <Input value={gAvatar} onChange={setGAvatar} />
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
-            <div>
-              <div style={{ fontSize: 13, color: '#555', marginBottom: 4 }}>默认折扣</div>
-              <InputNumber value={gDefDiscount} onChange={setGDefDiscount} min={0.1} max={1} step={0.01} style={{ width: '100%' }} />
-            </div>
-            <div>
-              <div style={{ fontSize: 13, color: '#555', marginBottom: 4 }}>推荐折扣</div>
-              <InputNumber value={gRecDiscount} onChange={setGRecDiscount} min={0.1} max={1} step={0.01} style={{ width: '100%' }} />
-            </div>
-          </div>
-        </div>
-      </Modal>
-
-      {/* =========================================================== */}
-      {/* 生成邀请链接 Modal                                               */}
-      {/* =========================================================== */}
-      <Modal
-        title={<Space><IconLink /><span>生成组员邀请链接</span></Space>}
-        visible={inviteVisible}
-        onCancel={() => setInviteVisible(false)}
-        footer={
-          <Space>
-            <Button onClick={() => setInviteVisible(false)}>关闭</Button>
-            <Button theme='solid' loading={inviteLoading} onClick={genInvite} icon={<IconRefresh />}>
-              生成链接
-            </Button>
-          </Space>
-        }
-        width={500}
-      >
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 13, color: '#555', marginBottom: 8 }}>
-            设置该组员在本组内的分润占比（1–99）：
-          </div>
-          <InputNumber
-            value={invitePct} onChange={setInvitePct}
-            min={1} max={99} suffix='%' style={{ width: 140 }}
+          <MemberDashboard
+            profile={profile} group={group} leader={leader}
+            leaderboard={leaderboard} reload={loadAll}
           />
-        </div>
-        <Banner
-          type='info'
-          description={
-            <span>
-              该组员加入后将看到自己在组内占比为 <strong>{invitePct}%</strong>。
-              实际金额 = 本组每周分成总额 × {invitePct}%。
-              <br />
-              <span style={{ fontSize: 12, color: '#aaa' }}>可重复生成，每次可设置不同占比</span>
-            </span>
-          }
-          style={{ marginBottom: 16, borderRadius: 8 }}
-        />
-        {inviteUrl && (
-          <div style={{
-            background: '#f0f9eb', border: '1px solid #b7eb8f',
-            borderRadius: 10, padding: '14px 16px',
-          }}>
-            <div style={{ color: '#52c41a', fontWeight: 600, marginBottom: 8 }}>✅ 邀请链接已生成：</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <code style={{
-                flex: 1, fontSize: 12, wordBreak: 'break-all',
-                background: '#e8f8e0', padding: '6px 8px', borderRadius: 6,
-              }}>
-                {inviteUrl}
-              </code>
-              <Button size='small' theme='solid' icon={<IconCopy />} onClick={() => copyText(inviteUrl)}>
-                复制
-              </Button>
-            </div>
-          </div>
         )}
-      </Modal>
-
-      {/* =========================================================== */}
-      {/* 踢出组员 Modal                                                  */}
-      {/* =========================================================== */}
-      <Modal
-        title='移出组员'
-        visible={!!kickId}
-        onCancel={() => setKickId(null)}
-        onOk={kickMember}
-        okText='确认移出'
-        okButtonProps={{ type: 'danger' }}
-      >
-        <Text>确定要将该组员移出小组吗？移出后推广记录仍然保留。</Text>
-      </Modal>
-
-      {/* =========================================================== */}
-      {/* 退出小组 Modal                                                  */}
-      {/* =========================================================== */}
-      <Modal
-        title='退出小组'
-        visible={leaveVisible}
-        onCancel={() => setLeaveVisible(false)}
-        onOk={leaveGroup}
-        okText='确认退出'
-        okButtonProps={{ type: 'danger' }}
-      >
-        <Text>确定要退出当前小组吗？退出后推广记录仍然保留。</Text>
-      </Modal>
-
-      {/* =========================================================== */}
-      {/* 转让组长 Modal                                                  */}
-      {/* =========================================================== */}
-      <Modal
-        title='转让组长'
-        visible={transferVisible}
-        onCancel={() => setTransferVisible(false)}
-        onOk={transferLeader}
-        okText='确认转让'
-      >
-        <Text style={{ display: 'block', marginBottom: 12 }}>选择接任组长的组员：</Text>
-        {members.length === 0 ? (
-          <Text type='secondary'>暂无组员，请先邀请组员加入。</Text>
-        ) : members.map((m) => (
-          <div
-            key={m.user_id}
-            onClick={() => setTransferToId(m.user_id)}
-            style={{
-              padding: '10px 14px', marginBottom: 8, borderRadius: 8, cursor: 'pointer',
-              border: `2px solid ${transferToId === m.user_id ? '#4776e6' : '#e0e0e0'}`,
-              background: transferToId === m.user_id ? '#eef2ff' : '#fafafa',
-            }}
-          >
-            <Text strong>{m.real_name || '未填写姓名'}</Text>
-            <Text type='secondary' style={{ marginLeft: 8 }}>微信：{m.wechat_id || '未填写'}</Text>
-          </div>
-        ))}
-      </Modal>
-
-      {/* =========================================================== */}
-      {/* 修改占比 Modal                                                  */}
-      {/* =========================================================== */}
-      <Modal
-        title='修改组员分润占比'
-        visible={!!editShareMember}
-        onCancel={() => setEditShareMember(null)}
-        onOk={updateShare}
-        okText='保存'
-      >
-        <Text style={{ display: 'block', marginBottom: 8 }}>
-          修改 <Text strong>{editShareMember?.real_name || '该组员'}</Text> 在组内的分润占比：
-        </Text>
-        <InputNumber
-          value={editSharePct} onChange={setEditSharePct}
-          min={1} max={99} suffix='%' style={{ width: 140 }}
-        />
-        <Banner
-          type='warning'
-          description='所有组员占比之和不应超过 100%，超出部分归组长所有。'
-          style={{ marginTop: 12, borderRadius: 8 }}
-        />
-      </Modal>
-
+      </div>
     </div>
   );
 };
