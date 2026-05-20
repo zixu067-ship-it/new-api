@@ -33,3 +33,10 @@ package model
         a.CreatedTime = now
         return DB.Create(a).Error
   }
+  func UpsertUserGroupAttribution(userId int, groupId int) {
+        var attr UserGroupAttribution
+        if err := DB.Where("user_id = ?", userId).First(&attr).Error; err != nil {
+                attr = UserGroupAttribution{UserId: userId, GroupId: groupId}
+                DB.Create(&attr)
+        }
+  }

@@ -72,6 +72,62 @@ package controller
         })
   }
 
+  func GetLeaderProfile(c *gin.Context) {
+        userId := c.GetInt("id")
+        member, err := model.GetPromoMemberByUserId(userId)
+        if err != nil {
+                c.JSON(http.StatusOK, gin.H{"success": false, "message": "您不在任何小组"})
+                return
+        }
+        group, err := model.GetPromoGroupById(member.GroupId)
+        if err != nil {
+                c.JSON(http.StatusOK, gin.H{"success": false, "message": "小组不存在"})
+                return
+        }
+        profile, err := model.GetAgentProfileByUserId(group.LeaderUserId)
+        if err != nil {
+                c.JSON(http.StatusOK, gin.H{"success": false, "message": "组长未填写联系方式"})
+                return
+        }
+        c.JSON(http.StatusOK, gin.H{"success": true, "data": gin.H{
+                "real_name":    profile.RealName,
+                "phone":        profile.Phone,
+                "wechat_id":    profile.WechatId,
+                "wechat_qr":    profile.WechatQrUrl,
+        }})
+  }
+
+  func GetMembersProfiles(c *gin.Context) {
+        userId := c.GetInt("id")
+        group, err := model.GetPromoGroupByLeader(userId)
+        if err != nil {
+                c.JSON(http.StatusOK, gin.H{"success": false, "message": "您不是组长"})
+                return
+        }
+        members, _ := model.GetPromoMembersByGroup(group.Id)
+        var result []map[string]interface{}
+        for _, m := range members {
+                if m.Role == "leader" || m.UserId == 0 {
+                        continue
+                }
+                item := map[string]interface{}{
+                        "member_id":       m.Id,
+                        "user_id":         m.UserId,
+                        "share_pct":       m.SharePctInGroup,
+                        "status":          m.Status,
+                }
+                if p, err2 := model.GetAgentProfileByUserId(m.UserId); err2 == nil {
+                        item["real_name"] = p.RealName
+                        item["phone"] = p.Phone
+                        item["wechat_id"] = p.WechatId
+                        item["wechat_qr"] = p.WechatQrUrl
+                        item["alipay_qr"] = p.AlipayQrUrl
+                }
+                result = append(result, item)
+        }
+        c.JSON(http.StatusOK, gin.H{"success": true, "data": result})
+  }
+
   func CreateGroup(c *gin.Context) {
         userId := c.GetInt("id")
         if _, err := model.GetAgentProfileByUserId(userId); err != nil {
@@ -126,8 +182,8 @@ package controller
                 GroupId:            group.Id,
                 UserId:             userId,
                 Role:               "leader",
-                SharePctInGroup:    100.00,
-                SharePctOfPlatform: 25.00,
+                SharePctInGroup:    0,
+                SharePctOfPlatform: 0,
                 Status:             1,
         }
         if err := leader.Insert(); err != nil {
@@ -191,13 +247,13 @@ package controller
                 return
         }
         if req.SharePctInGroup <= 0 || req.SharePctInGroup >= 100 {
-                c.JSON(http.StatusOK, gin.H{"success": false, "message": "组内分润占比必须在 0-100 之间"})
+                c.JSON(http.StatusOK, gin.H{"success": false, "message": "组内分润占比必须在 1-99 之间"})
                 return
         }
         members, _ := model.GetPromoMembersByGroup(group.Id)
         used := 0.0
         for _, m := range members {
-                if m.Role == "member" && m.Status == 1 {
+                if m.Role == "member" && m.Status == 1 && m.UserId > 0 {
                         used += m.SharePctInGroup
                 }
         }
@@ -313,7 +369,7 @@ package controller
                         target = m
                         continue
                 }
-                if m.Role == "member" && m.Status == 1 {
+                if m.Role == "member" && m.Status == 1 && m.UserId > 0 {
                         used += m.SharePctInGroup
                 }
         }
@@ -332,4 +388,97 @@ package controller
                 return
         }
         c.JSON(http.StatusOK, gin.H{"success": true, "message": "更新成功"})
+  }
+
+  func LeaveGroup(c *gin.Context) {
+        userId := c.GetInt("id")
+        member, err := model.GetPromoMemberByUserId(userId)
+        if err != nil {
+                c.JSON(http.StatusOK, gin.H{"success": false, "message": "您不在任何小组"})
+                return
+        }
+        if member.Role == "leader" {
+                c.JSON(http.StatusOK, gin.H{"success": false, "message": "组长不能直接退出，请先转让组长"})
+                return
+        }
+        if err := model.DB.Delete(member).Error; err != nil {
+                c.JSON(http.StatusOK, gin.H{"success": false, "message": "退出失败"})
+                return
+        }
+        c.JSON(http.StatusOK, gin.H{"success": true, "message": "已退出小组"})
+  }
+
+  func KickMember(c *gin.Context) {
+        userId := c.GetInt("id")
+        if _, err := model.GetPromoGroupByLeader(userId); err != nil {
+                c.JSON(http.StatusOK, gin.H{"success": false, "message": "您不是组长"})
+                return
+        }
+        memberIdStr := c.Param("id")
+        memberId, err := strconv.Atoi(memberIdStr)
+        if err != nil {
+                c.JSON(http.StatusOK, gin.H{"success": false, "message": "参数错误"})
+                return
+        }
+        var target model.PromoMember
+        if err := model.DB.Where("id = ?", memberId).First(&target).Error; err != nil {
+                c.JSON(http.StatusOK, gin.H{"success": false, "message": "组员不存在"})
+                return
+        }
+        if target.Role == "leader" {
+                c.JSON(http.StatusOK, gin.H{"success": false, "message": "不能踢出组长"})
+                return
+        }
+        if err := model.DB.Delete(&target).Error; err != nil {
+                c.JSON(http.StatusOK, gin.H{"success": false, "message": "踢出失败"})
+                return
+        }
+        c.JSON(http.StatusOK, gin.H{"success": true, "message": "已踢出组员"})
+  }
+
+  func TransferLeader(c *gin.Context) {
+        userId := c.GetInt("id")
+        group, err := model.GetPromoGroupByLeader(userId)
+        if err != nil {
+                c.JSON(http.StatusOK, gin.H{"success": false, "message": "您不是组长"})
+                return
+        }
+        var req struct {
+                NewLeaderUserId int `json:"new_leader_user_id"`
+        }
+        if err := c.ShouldBindJSON(&req); err != nil || req.NewLeaderUserId == 0 {
+                c.JSON(http.StatusOK, gin.H{"success": false, "message": "请指定新组长"})
+                return
+        }
+        members, _ := model.GetPromoMembersByGroup(group.Id)
+        var newLeaderMember *model.PromoMember
+        var oldLeaderMember *model.PromoMember
+        for _, m := range members {
+                if m.UserId == req.NewLeaderUserId && m.Role == "member" && m.Status == 1 {
+                        newLeaderMember = m
+                }
+                if m.UserId == userId && m.Role == "leader" {
+                        oldLeaderMember = m
+                }
+        }
+        if newLeaderMember == nil {
+                c.JSON(http.StatusOK, gin.H{"success": false, "message": "指定的新组长不是本组成员"})
+                return
+        }
+        newLeaderMember.Role = "leader"
+        newLeaderMember.SharePctInGroup = 0
+        newLeaderMember.SharePctOfPlatform = 0
+        if err := newLeaderMember.Update(); err != nil {
+                c.JSON(http.StatusOK, gin.H{"success": false, "message": "更新新组长失败"})
+                return
+        }
+        group.LeaderUserId = req.NewLeaderUserId
+        if err := group.Update(); err != nil {
+                c.JSON(http.StatusOK, gin.H{"success": false, "message": "更新小组组长失败"})
+                return
+        }
+        if oldLeaderMember != nil {
+                model.DB.Delete(oldLeaderMember)
+        }
+        c.JSON(http.StatusOK, gin.H{"success": true, "message": "组长转让成功，您已退出小组"})
   }

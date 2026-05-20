@@ -64,6 +64,8 @@ func SetApiRouter(router *gin.Engine) {
     // 公开邀请预览（不需登录）
                 apiRouter.GET("/agent/invite/:token", controller.GetInviteInfo)
 
+                apiRouter.GET("/agent/invite/:token", controller.GetInviteInfo)
+
                 agentRoute := apiRouter.Group("/agent")
                 agentRoute.Use(middleware.UserAuth())
                 {
@@ -75,6 +77,11 @@ func SetApiRouter(router *gin.Engine) {
                         agentRoute.POST("/group/invite", controller.CreateInvite)
                         agentRoute.POST("/invite/:token/accept", controller.AcceptInvite)
                         agentRoute.PUT("/group/member/:id", controller.UpdateMemberShare)
+                        agentRoute.GET("/group/leader-profile", controller.GetLeaderProfile)
+                        agentRoute.GET("/group/members-profiles", controller.GetMembersProfiles)
+                        agentRoute.DELETE("/group/leave", controller.LeaveGroup)
+                        agentRoute.DELETE("/group/member/:id", controller.KickMember)
+                        agentRoute.POST("/group/transfer", controller.TransferLeader)
                 }
 		userRoute := apiRouter.Group("/user")
 		{

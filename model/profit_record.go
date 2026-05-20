@@ -1,6 +1,9 @@
 package model
 
   import (
+        "encoding/json"
+        "fmt"
+
         "github.com/QuantumNous/new-api/common"
   )
 
@@ -60,4 +63,38 @@ package model
                 Select("COALESCE(SUM(group_share_amount), 0)").
                 Scan(&total).Error
         return total, err
+  }
+  func RecordProfitFromTopUp(userId int, topUp *TopUp) {
+        var attr UserGroupAttribution
+        if err := DB.Where("user_id = ?", userId).First(&attr).Error; err != nil {
+                return
+        }
+        group, err := GetPromoGroupById(attr.GroupId)
+        if err != nil {
+                return
+        }
+        topupAmount := float64(topUp.Amount) / 100.0
+        groupSharePct := group.CurrentSharePct
+        groupShareAmount := topupAmount * groupSharePct / 100.0
+        members, _ := GetPromoMembersByGroup(group.Id)
+        memberBreakdown := map[string]float64{}
+        for _, m := range members {
+                if m.Role == "member" && m.Status == 1 && m.UserId > 0 && m.SharePctInGroup > 0 {
+                        memberBreakdown[fmt.Sprintf("%d", m.UserId)] = groupShareAmount * m.SharePctInGroup / 100.0
+                }
+        }
+        mbJson, _ := json.Marshal(memberBreakdown)
+        record := ProfitRecord{
+                TopupId:          topUp.Id,
+                UserId:           userId,
+                GroupId:          group.Id,
+                TopupAmount:      topupAmount,
+                DiscountApplied:  group.DefaultDiscount,
+                ProfitBase:       topupAmount,
+                GroupSharePct:    groupSharePct,
+                GroupShareAmount: groupShareAmount,
+                MemberBreakdown:  string(mbJson),
+                Status:           "pending",
+        }
+        DB.Create(&record)
   }
