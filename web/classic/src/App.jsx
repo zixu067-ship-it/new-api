@@ -54,6 +54,7 @@ const Home = lazy(() => import('./pages/Home'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const About = lazy(() => import('./pages/About'));
 const Agent = lazy(() => import('./pages/Agent'));
+const AgentInvite = lazy(() => import('./pages/Agent/Invite'));
 const UserAgreement = lazy(() => import('./pages/UserAgreement'));
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
 
@@ -356,6 +357,14 @@ function App() {
             element={
               <Suspense fallback={<Loading></Loading>} key={location.pathname}>
                 <Agent />
+              </Suspense>
+            }
+          />
+          <Route
+            path='/agent/invite/:token'
+            element={
+              <Suspense fallback={<Loading></Loading>} key={location.pathname}>
+                <AgentInvite />
               </Suspense>
             }
           />

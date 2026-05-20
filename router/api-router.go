@@ -61,12 +61,21 @@ func SetApiRouter(router *gin.Engine) {
 		// Universal secure verification routes
 		apiRouter.POST("/verify", middleware.UserAuth(), middleware.CriticalRateLimit(), controller.UniversalVerify)
 
-    agentRoute := apiRouter.Group("/agent")
-                    agentRoute.Use(middleware.UserAuth())
-                    {
-                            agentRoute.GET("/profile", controller.GetAgentProfile)
-                            agentRoute.POST("/profile", controller.SaveAgentProfile)
-                    }
+    // 公开邀请预览（不需登录）
+                apiRouter.GET("/agent/invite/:token", controller.GetInviteInfo)
+
+                agentRoute := apiRouter.Group("/agent")
+                agentRoute.Use(middleware.UserAuth())
+                {
+                        agentRoute.GET("/profile", controller.GetAgentProfile)
+                        agentRoute.POST("/profile", controller.SaveAgentProfile)
+                        agentRoute.GET("/group", controller.GetMyGroup)
+                        agentRoute.POST("/group", controller.CreateGroup)
+                        agentRoute.PUT("/group", controller.UpdateGroup)
+                        agentRoute.POST("/group/invite", controller.CreateInvite)
+                        agentRoute.POST("/invite/:token/accept", controller.AcceptInvite)
+                        agentRoute.PUT("/group/member/:id", controller.UpdateMemberShare)
+                }
 		userRoute := apiRouter.Group("/user")
 		{
 			userRoute.POST("/register", middleware.CriticalRateLimit(), middleware.TurnstileCheck(), controller.Register)
