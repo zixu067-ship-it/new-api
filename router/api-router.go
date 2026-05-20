@@ -64,7 +64,6 @@ func SetApiRouter(router *gin.Engine) {
     // 公开邀请预览（不需登录）
                 apiRouter.GET("/agent/invite/:token", controller.GetInviteInfo)
 
-                apiRouter.GET("/agent/invite/:token", controller.GetInviteInfo)
 
                 agentRoute := apiRouter.Group("/agent")
                 agentRoute.Use(middleware.UserAuth())
