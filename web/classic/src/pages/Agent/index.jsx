@@ -571,12 +571,12 @@ const LeaderDashboard = ({ profile, group, members, leaderboard, reload }) => {
       share_pct_in_group: invitePct / 100,
     });
     if (r.data.success) {
-      setInviteToken(r.data.data.token);
+      setInviteToken(r.data.data.invite_token || r.data.data.token);
       Toast.success('已生成邀请链接');
     } else Toast.error(r.data.message || '生成失败');
   };
 
-  const inviteUrl = inviteToken ? `${window.location.origin}/agent/invite/${inviteToken}` : '';
+  const inviteUrl = inviteToken ? `${window.location.origin}/agent?invite=${inviteToken}` : '';
 
   const updateMember = async () => {
     if (!editMember) return;
@@ -1158,6 +1158,109 @@ const MemberDashboard = ({ profile, group, leader, leaderboard, reload }) => {
 };
 
 /* ================================================================== */
+/*  邀请落地页（?invite=TOKEN）                                            */
+/* ================================================================== */
+const InviteLanding = ({ token, onAccepted, onCancel }) => {
+  const [loading, setLoading] = useState(true);
+  const [info, setInfo] = useState(null);
+  const [err, setErr] = useState('');
+  const [accepting, setAccepting] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const r = await API.get(`/api/agent/invite/${token}`);
+        if (!alive) return;
+        if (r.data && r.data.success) setInfo(r.data.data);
+        else setErr(r.data?.message || '邀请链接无效或已被使用');
+      } catch (e) {
+        if (alive) setErr('网络错误，请稍后再试');
+      } finally {
+        if (alive) setLoading(false);
+      }
+    })();
+    return () => { alive = false; };
+  }, [token]);
+
+  const accept = async () => {
+    setAccepting(true);
+    try {
+      const r = await API.post(`/api/agent/invite/${token}/accept`);
+      if (r.data && r.data.success) {
+        Toast.success('🎉 已加入小组！');
+        onAccepted && onAccepted();
+      } else {
+        Toast.error(r.data?.message || '加入失败');
+      }
+    } catch (e) {
+      Toast.error('网络错误');
+    } finally { setAccepting(false); }
+  };
+
+  if (loading) {
+    return (
+      <div style={{ textAlign: 'center', padding: 80 }}>
+        <Spin size="large" />
+      </div>
+    );
+  }
+
+  if (err) {
+    return (
+      <Card className="agent-glass agent-v3-content" style={{ maxWidth: 520, margin: '40px auto' }}>
+        <Empty title="邀请无效" description={err} />
+        <div style={{ textAlign: 'center', marginTop: 16 }}>
+          <Button onClick={onCancel}>返回代理首页</Button>
+        </div>
+      </Card>
+    );
+  }
+
+  const sharePctNum = Math.round(toFrac(info?.share_pct_in_group || 0) * 100);
+
+  return (
+    <Card className="agent-glass agent-v3-content" style={{ maxWidth: 560, margin: '40px auto', textAlign: 'center' }}>
+      <Title heading={3} style={{ marginBottom: 4 }}>🎁 邀请加入小组</Title>
+      <Text type="tertiary">有人邀请你加入他的代理小组</Text>
+      <Divider />
+
+      <div style={{ marginBottom: 20 }}>
+        <Avatar src={info?.group_avatar} size="extra-large" style={{ background: 'linear-gradient(135deg, #C724B1, #4FC3F7)' }}>
+          {info?.group_name?.[0] || 'G'}
+        </Avatar>
+        <Title heading={4} style={{ margin: '12px 0 4px' }}>{info?.group_name}</Title>
+        {info?.group_slogan && (
+          <Text type="tertiary" style={{ fontStyle: 'italic' }}>"{info.group_slogan}"</Text>
+        )}
+      </div>
+
+      <Card style={{ background: 'linear-gradient(135deg,#fff5fa,#f0f7ff)', marginBottom: 20 }}>
+        <Text type="tertiary">你将获得的分红比例</Text>
+        <div style={{ fontSize: 48, fontWeight: 700, color: '#C724B1', lineHeight: 1.2 }}>
+          {sharePctNum}%
+        </div>
+        <Text type="tertiary" style={{ fontSize: 12 }}>
+          基于小组分红额计算 · 由组长设定
+        </Text>
+      </Card>
+
+      <Space>
+        <Button theme="solid" type="primary" size="large" loading={accepting} onClick={accept}>
+          ✅ 接受邀请并加入
+        </Button>
+        <Button size="large" onClick={onCancel}>暂不加入</Button>
+      </Space>
+
+      <Paragraph style={{ marginTop: 16, fontSize: 12, color: '#888' }}>
+        加入后你将看到组长的联系方式与收款码；
+        小组本周排名会决定整体分红，加油一起冲榜！
+      </Paragraph>
+    </Card>
+  );
+};
+
+/* ================================================================== */
 /*  主组件                                                               */
 /* ================================================================== */
 const Agent = () => {
@@ -1168,6 +1271,11 @@ const Agent = () => {
   const [leader, setLeader] = useState(null);
   const [leaderboard, setLeaderboard] = useState([]);
   const [phase, setPhase] = useState('intro'); // intro | profile-form | group-create | leader | member
+  // 邀请落地：从 URL 读 ?invite=TOKEN
+  const [inviteToken, setInviteToken] = useState(() => {
+    try { return new URLSearchParams(window.location.search).get('invite') || ''; }
+    catch { return ''; }
+  });
 
   useEffect(() => { injectStyles(); }, []);
 
@@ -1245,9 +1353,22 @@ const Agent = () => {
 
   return (
     <div className="agent-v3-root">
-      <DebugPanel data={{ phase, profile, group, members, leader, leaderboard, _hint: 'v14: 折扣字段=default_discount; 头像走localStorage; QR点击放大' }} />
+      <DebugPanel data={{ phase, profile, group, members, leader, leaderboard, inviteToken, _hint: 'v15: 邀请落地 ?invite=TOKEN' }} />
       <div style={{ position: 'relative', zIndex: 1 }}>
-        {loading ? (
+        {inviteToken ? (
+          <InviteLanding
+            token={inviteToken}
+            onAccepted={() => {
+              try { window.history.replaceState({}, '', window.location.pathname); } catch {}
+              setInviteToken('');
+              loadAll();
+            }}
+            onCancel={() => {
+              try { window.history.replaceState({}, '', window.location.pathname); } catch {}
+              setInviteToken('');
+            }}
+          />
+        ) : loading ? (
           <div style={{ textAlign: 'center', padding: 80 }}>
             <Spin size="large" />
           </div>
