@@ -63,8 +63,4 @@ package model
         g.UpdatedTime = common.GetTimestamp()
         return DB.Save(g).Error
   }
-  func GetPromoGroupByCode(code string) (*PromoGroup, error) {
-        var group PromoGroup
-        err := DB.Where("group_code = ? AND status = 1", code).First(&group).Error
-        return &group, err
-  }
+  

@@ -94,7 +94,7 @@ package model
                 GroupSharePct:    groupSharePct,
                 GroupShareAmount: groupShareAmount,
                 MemberBreakdown:  string(mbJson),
-                Status:           "pending",
+                SettlementStatus: "pending",
         }
         DB.Create(&record)
   }
