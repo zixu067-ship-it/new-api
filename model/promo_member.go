@@ -7,7 +7,7 @@ package model
   type PromoMember struct {
         Id                 int     `json:"id" gorm:"primaryKey;autoIncrement"`
         GroupId            int     `json:"group_id" gorm:"index;not null"`
-        UserId             int     `json:"user_id" gorm:"uniqueIndex;not null"`
+        UserId             int     `json:"user_id" gorm:"index;not null"`
         Role               string  `json:"role" gorm:"type:varchar(16);not null"`
         SharePctInGroup    float64 `json:"share_pct_in_group" gorm:"type:decimal(5,2)"`
         SharePctOfPlatform float64 `json:"share_pct_of_platform" gorm:"type:decimal(6,3)"`
