@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
   import { useParams, useNavigate } from 'react-router-dom';
   import { Card, Button, Toast, Typography, Space, Spin, Tag, Banner, Avatar } from '@douyinfe/semi-ui';
   import { IconUserGroup } from '@douyinfe/semi-icons';
-  import { API, getUserData } from '../../helpers';
+  import { API } from '../../helpers';
 
   const { Title, Text } = Typography;
 
@@ -32,13 +32,7 @@ import React, { useEffect, useState } from 'react';
       setLoading(false);
     };
 
-    const handleAccept = async () => {
-      const user = getUserData();
-      if (!user) {
-        Toast.info('请先登录或注册账号');
-        navigate('/login?expired=true');
-        return;
-      }
+    
       setAccepting(true);
       try {
         const res = await API.post(`/api/agent/invite/${token}/accept`);
