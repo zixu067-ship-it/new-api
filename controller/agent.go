@@ -111,17 +111,26 @@ package controller
                         continue
                 }
                 item := map[string]interface{}{
-                        "member_id":       m.Id,
-                        "user_id":         m.UserId,
-                        "share_pct":       m.SharePctInGroup,
-                        "status":          m.Status,
+                        "member_id":          m.Id,
+                        "user_id":            m.UserId,
+                        "share_pct":          m.SharePctInGroup,
+                        "share_pct_in_group": m.SharePctInGroup,
+                        "status":             m.Status,
+                }
+                if u, errU := model.GetUserById(m.UserId, false); errU == nil && u != nil {
+                        item["username"] = u.Username
+                        item["nickname"] = u.DisplayName
                 }
                 if p, err2 := model.GetAgentProfileByUserId(m.UserId); err2 == nil {
                         item["real_name"] = p.RealName
                         item["phone"] = p.Phone
+                        item["wechat"] = p.WechatId
                         item["wechat_id"] = p.WechatId
+                        item["wechat_qr_url"] = p.WechatQrUrl
                         item["wechat_qr"] = p.WechatQrUrl
+                        item["alipay_qr_url"] = p.AlipayQrUrl
                         item["alipay_qr"] = p.AlipayQrUrl
+                        item["payment_qr"] = p.AlipayQrUrl
                 }
                 result = append(result, item)
         }
