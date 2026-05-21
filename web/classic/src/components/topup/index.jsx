@@ -861,11 +861,8 @@ const TopUp = () => {
   const selectPresetAmount = (preset) => {
     setTopUpCount(preset.value);
     setSelectedPreset(preset.value);
-
-    // 计算实际支付金额，考虑折扣
-    const discount = preset.discount || topupInfo.discount[preset.value] || 1.0;
-    const discountedAmount = preset.value * priceRatio * discount;
-    setAmount(discountedAmount);
+    // 通过后端计算实付金额，确保镜像折扣等服务端规则生效
+    getAmount(preset.value);
   };
 
   // 格式化大数字显示
