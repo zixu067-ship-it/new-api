@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import {
   Card, Button, Toast, Typography, Space, Spin, Tag, Banner,
   Modal, InputNumber, Avatar, Input, Form, Divider, Empty, Tooltip,
@@ -12,6 +12,48 @@ import {
 import { API } from '../../helpers';
 
 const { Title, Text, Paragraph } = Typography;
+
+/* ============ ImagePicker: URL输入 + 本地上传二合一 ============ */
+function ImagePicker({ value, onChange, placeholder, style }) {
+  const [uploading, setUploading] = useState(false);
+  const inputRef = useRef(null);
+  const handleFile = async (e) => {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { Toast.warning('文件超过 5MB'); return; }
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch('/api/upload/image', { method: 'POST', body: fd, credentials: 'include' });
+      const data = await res.json();
+      if (data && data.success && data.data && data.data.url) {
+        onChange && onChange(data.data.url);
+        Toast.success('上传成功');
+      } else {
+        Toast.error((data && data.message) || '上传失败');
+      }
+    } catch (err) {
+      Toast.error('上传失败');
+    } finally {
+      setUploading(false);
+    }
+  };
+  return (
+    <div style={{ display: 'flex', gap: 8, alignItems: 'center', ...(style||{}) }}>
+      <Input
+        value={value}
+        onChange={(v) => onChange && onChange(v)}
+        placeholder={placeholder || 'https://... 或点右侧本地上传'}
+        style={{ flex: 1 }}
+      />
+      <Button onClick={() => inputRef.current && inputRef.current.click()} loading={uploading} type="tertiary">本地上传</Button>
+      <input ref={inputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFile} />
+      {value ? <img src={value} alt="preview" style={{ width: 32, height: 32, borderRadius: 4, objectFit: 'cover', border: '1px solid #eee' }} onError={(e)=>{e.target.style.display='none';}} /> : null}
+    </div>
+  );
+}
 
 /* ================================================================== */
 /*  样式：动态渐变背景 + 玻璃拟态                                          */
@@ -406,7 +448,7 @@ const ProfileForm = ({ initial, onSave, onCancel, mode = 'create' }) => {
         </div>
         <div>
           <Text strong>头像 URL</Text>
-          <Input value={form.avatar} onChange={(v) => setForm({ ...form, avatar: v })} placeholder="https://..." />
+          <ImagePicker value={form.avatar} onChange={(v) => setForm({ ...form, avatar: v })} placeholder="个人头像图片" />
         </div>
         <div>
           <Text strong>微信号<span className="agent-required">*</span></Text>
@@ -418,7 +460,7 @@ const ProfileForm = ({ initial, onSave, onCancel, mode = 'create' }) => {
         </div>
         <div>
           <Text strong>收款码 URL</Text>
-          <Input value={form.payment_qr} onChange={(v) => setForm({ ...form, payment_qr: v })} placeholder="https://... 上传后图片直链" />
+          <ImagePicker value={form.payment_qr} onChange={(v) => setForm({ ...form, payment_qr: v })} placeholder="个人收款码图片" />
         </div>
         <div>
           <Text strong>个人宣传语</Text>
@@ -466,10 +508,10 @@ const GroupCreateForm = ({ onSave }) => {
         </Avatar>
         <div style={{ flex: 1 }}>
           <Text strong>小组头像 URL</Text>
-          <Input
+          <ImagePicker
             value={form.avatar_url}
             onChange={(v) => setForm({ ...form, avatar_url: v })}
-            placeholder="https://... 留空则用首字头像"
+            placeholder="小组头像图片，留空则用首字"
           />
         </div>
       </div>
@@ -971,7 +1013,7 @@ const GroupEditInline = ({ initial, onSave }) => {
         </Avatar>
         <div style={{ flex: 1 }}>
           <Text strong>小组头像 URL</Text>
-          <Input value={f.avatar_url} onChange={(v) => setF({ ...f, avatar_url: v })} placeholder="https://... 留空则用首字头像" />
+          <ImagePicker value={f.avatar_url} onChange={(v) => setF({ ...f, avatar_url: v })} placeholder="小组头像图片，留空则用首字" />
         </div>
       </div>
       <div>

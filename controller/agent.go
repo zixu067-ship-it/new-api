@@ -525,3 +525,53 @@ package controller
         }
         c.JSON(http.StatusOK, gin.H{"success": true, "data": list})
   }
+
+func SetGroupSharePct(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"success": false, "message": "无效ID"})
+		return
+	}
+	var req struct {
+		SharePct float64 `json:"share_pct"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusOK, gin.H{"success": false, "message": "参数错误"})
+		return
+	}
+	if req.SharePct < 25 || req.SharePct > 70 {
+		c.JSON(http.StatusOK, gin.H{"success": false, "message": "分红比例必须在 25% ~ 70% 之间"})
+		return
+	}
+	g, err := model.GetPromoGroupById(id)
+	if err != nil || g == nil {
+		c.JSON(http.StatusOK, gin.H{"success": false, "message": "小组不存在"})
+		return
+	}
+	g.CurrentSharePct = req.SharePct
+	if err := g.Update(); err != nil {
+		c.JSON(http.StatusOK, gin.H{"success": false, "message": "更新失败"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"success": true, "data": g})
+}
+
+func DissolveGroup(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"success": false, "message": "无效ID"})
+		return
+	}
+	g, err := model.GetPromoGroupById(id)
+	if err != nil || g == nil {
+		c.JSON(http.StatusOK, gin.H{"success": false, "message": "小组不存在"})
+		return
+	}
+	if err := model.DeletePromoGroup(id); err != nil {
+		c.JSON(http.StatusOK, gin.H{"success": false, "message": "解散失败: " + err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"success": true})
+}

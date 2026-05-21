@@ -69,3 +69,16 @@ package model
         err := DB.Order("id desc").Find(&groups).Error
         return groups, err
   }
+
+func DeletePromoGroup(id int) error {
+	tx := DB.Begin()
+	if err := tx.Where("group_id = ?", id).Delete(&PromoMember{}).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+	if err := tx.Delete(&PromoGroup{}, id).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+	return tx.Commit().Error
+}

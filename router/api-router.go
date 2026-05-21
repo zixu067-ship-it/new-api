@@ -12,6 +12,7 @@ import (
 )
 
 func SetApiRouter(router *gin.Engine) {
+	router.Static("/uploads", "/data/uploads")
 	apiRouter := router.Group("/api")
 	apiRouter.Use(middleware.RouteTag("api"))
 	apiRouter.Use(gzip.Gzip(gzip.DefaultCompression))
@@ -88,7 +89,10 @@ func SetApiRouter(router *gin.Engine) {
                 adminAgentRoute.Use(middleware.AdminAuth())
                 {
                         adminAgentRoute.GET("/groups", controller.GetAllPromoGroupsAdmin)
+                        adminAgentRoute.PUT("/groups/:id/share-pct", controller.SetGroupSharePct)
+                        adminAgentRoute.DELETE("/groups/:id", controller.DissolveGroup)
                 }
+		apiRouter.POST("/upload/image", middleware.UserAuth(), controller.UploadImage)
 
 		userRoute := apiRouter.Group("/user")
 		{

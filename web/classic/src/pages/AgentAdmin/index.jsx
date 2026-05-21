@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   Card, Table, Tag, Typography, Avatar, Space, Button, Modal, Spin, Empty, Toast,
+  InputNumber, Popconfirm, Image,
 } from '@douyinfe/semi-ui';
 import { API, copy as copyText, showError } from '../../helpers';
 import SiderBar from '../../components/layout/SiderBar';
@@ -11,6 +12,8 @@ const AgentAdmin = () => {
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState([]);
   const [detail, setDetail] = useState(null);
+  const [editPct, setEditPct] = useState(null); // {group, value}
+  const [saving, setSaving] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -22,6 +25,33 @@ const AgentAdmin = () => {
     setLoading(false);
   };
   useEffect(() => { load(); }, []);
+
+  const submitPct = async () => {
+    if (!editPct) return;
+    if (editPct.value < 25 || editPct.value > 70) {
+      Toast.warning('比例必须在 25 ~ 70 之间'); return;
+    }
+    setSaving(true);
+    try {
+      const r = await API.put(`/api/agent-admin/groups/${editPct.group.id}/share-pct`, { share_pct: Number(editPct.value) });
+      if (r.data.success) {
+        Toast.success('已更新');
+        setEditPct(null);
+        load();
+      } else showError(r.data.message || '更新失败');
+    } catch (e) { showError(e.message); }
+    setSaving(false);
+  };
+
+  const dissolve = async (g) => {
+    try {
+      const r = await API.delete(`/api/agent-admin/groups/${g.id}`);
+      if (r.data.success) {
+        Toast.success('已解散');
+        load();
+      } else showError(r.data.message || '解散失败');
+    } catch (e) { showError(e.message); }
+  };
 
   const columns = [
     { title: '小组', dataIndex: 'group', width: 220, render: (g) => (
@@ -48,22 +78,32 @@ const AgentAdmin = () => {
           {r.pending_invites > 0 && <Tag color="orange">+{r.pending_invites} 待接受</Tag>}
         </Space>
     )},
-    { title: '分红', dataIndex: 'group', width: 160, render: (g) => (
+    { title: '分红', dataIndex: 'group', width: 200, render: (g) => (
         <Space vertical align="start" spacing={2}>
-          <Text size="small">当前 {Number(g.current_share_pct || 0).toFixed(2)}%</Text>
+          <Space>
+            <Tag color="violet">当前 {Number(g.current_share_pct || 0).toFixed(2)}%</Tag>
+            <Button size="small" type="tertiary" onClick={() => setEditPct({ group: g, value: Number(g.current_share_pct || 25) })}>编辑</Button>
+          </Space>
           <Text size="small" type="tertiary">基础 {Number(g.base_share_pct || 0).toFixed(2)}%</Text>
         </Space>
     )},
     { title: '折扣', dataIndex: 'group', width: 100, render: (g) => (
         <Text>{Math.round((g.default_discount || 1) * 100) / 10} 折</Text>
     )},
-    { title: '操作', dataIndex: '_', width: 200, render: (_, r) => (
-        <Space>
+    { title: '操作', dataIndex: '_', width: 280, render: (_, r) => (
+        <Space wrap>
           <Button size="small" onClick={() => setDetail(r)}>详情</Button>
           <Button size="small" onClick={() => {
             const url = `${window.location.origin}/m/${r.group.group_code}`;
             copyText(url); Toast.success('已复制镜像链接');
           }}>复制镜像链接</Button>
+          <Popconfirm
+            title="确认解散此小组？"
+            content="此操作不可撤销。所有组员关系会被删除（用户账号保留）。"
+            onConfirm={() => dissolve(r.group)}
+          >
+            <Button size="small" type="danger">解散</Button>
+          </Popconfirm>
         </Space>
     )},
   ];
@@ -77,7 +117,7 @@ const AgentAdmin = () => {
             <Title heading={3}>👥 小组管理（管理员视角）</Title>
             <Button onClick={load}>刷新</Button>
           </Space>
-          <Paragraph type="tertiary">查看所有推广小组、组长联系方式、组员人数与分红设置</Paragraph>
+          <Paragraph type="tertiary">查看所有推广小组、组长联系方式、组员人数、分红设置；可手动调整分红比例（25%~70%）或解散小组。</Paragraph>
           {loading ? <Spin /> : (rows.length === 0 ? <Empty title="暂无小组" /> :
             <Table
               rowKey={(r) => r.group.id}
@@ -110,11 +150,50 @@ const AgentAdmin = () => {
               <Paragraph><b>微信：</b>{detail.leader_profile?.wechat_id || detail.leader_profile?.wechat || '-'}</Paragraph>
               <Paragraph><b>备注：</b>{detail.leader_profile?.remark || '-'}</Paragraph>
               {detail.leader_profile?.wechat_qr_url && (
-                <div><b>微信收款码：</b><br/><img src={detail.leader_profile.wechat_qr_url} style={{ maxWidth: 200, marginTop: 8 }}/></div>
+                <div style={{ marginTop: 12 }}>
+                  <b>微信收款码：</b>
+                  <div style={{ marginTop: 8 }}>
+                    <Image src={detail.leader_profile.wechat_qr_url} width={200} />
+                    <div><Text size="small" type="tertiary">点击图片可放大</Text></div>
+                  </div>
+                </div>
               )}
               {detail.leader_profile?.alipay_qr_url && (
-                <div style={{ marginTop: 8 }}><b>支付宝收款码：</b><br/><img src={detail.leader_profile.alipay_qr_url} style={{ maxWidth: 200, marginTop: 8 }}/></div>
+                <div style={{ marginTop: 12 }}>
+                  <b>支付宝收款码：</b>
+                  <div style={{ marginTop: 8 }}>
+                    <Image src={detail.leader_profile.alipay_qr_url} width={200} />
+                    <div><Text size="small" type="tertiary">点击图片可放大</Text></div>
+                  </div>
+                </div>
               )}
+            </div>
+          )}
+        </Modal>
+
+        <Modal
+          title={editPct ? `调整分红：${editPct.group.group_name}` : ''}
+          visible={!!editPct}
+          onOk={submitPct}
+          confirmLoading={saving}
+          onCancel={() => setEditPct(null)}
+          okText="保存"
+          cancelText="取消"
+        >
+          {editPct && (
+            <div>
+              <Paragraph type="tertiary">范围 25% ~ 70%。当前：{Number(editPct.group.current_share_pct).toFixed(2)}%（基础 {Number(editPct.group.base_share_pct).toFixed(2)}%）</Paragraph>
+              <InputNumber
+                value={editPct.value}
+                min={25}
+                max={70}
+                step={1}
+                precision={2}
+                suffix="%"
+                style={{ width: 200 }}
+                onChange={(v) => setEditPct({ ...editPct, value: v })}
+              />
+              <Paragraph type="tertiary" style={{ marginTop: 12 }}>对周榜前 5 名小组通常 +10%（最高 70%）</Paragraph>
             </div>
           )}
         </Modal>
