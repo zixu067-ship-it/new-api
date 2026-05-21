@@ -63,6 +63,43 @@ function DynamicOAuth2Callback() {
   return <OAuth2Callback type={provider} />;
 }
 
+
+// ================= 镜像站入口 =================
+// /m/:groupCode -> 保存 group_code 到 localStorage，然后跳到主站
+function MirrorEntry() {
+  const { groupCode } = useParams();
+  const location = useLocation();
+  React.useEffect(() => {
+    if (groupCode) {
+      try { localStorage.setItem('mirror_group_code', groupCode); } catch (e) {}
+    }
+    // strip /m/:code prefix from URL
+    const rest = location.pathname.replace(/^\/m\/[^/]+/, '') || '/';
+    window.location.replace(rest + location.search + location.hash);
+  }, [groupCode]);
+  return null;
+}
+
+// 镜像站横幅
+function MirrorBanner() {
+  const [info, setInfo] = React.useState(null);
+  React.useEffect(() => {
+    const code = localStorage.getItem('mirror_group_code');
+    if (!code) return;
+    fetch(`/api/mirror/group/${encodeURIComponent(code)}`)
+      .then(r => r.json())
+      .then(d => { if (d && d.success) setInfo(d.data); });
+  }, []);
+  if (!info) return null;
+  const discountPct = Math.round((1 - info.discount) * 100);
+  return (
+    <div style={{position:'fixed',top:0,left:0,right:0,zIndex:9999,background:'linear-gradient(90deg,#6E3FE7,#3D7DF0)',color:'#fff',padding:'8px 16px',fontSize:13,display:'flex',justifyContent:'space-between',alignItems:'center',boxShadow:'0 2px 8px rgba(0,0,0,0.15)'}}>
+      <span>🎁 您正在「{info.group_name}」小组镜像站，充值享 {discountPct}% 折扣（实付 ¥{(info.discount*100).toFixed(0)}/100元）</span>
+      <button onClick={() => { try { localStorage.removeItem('mirror_group_code'); } catch(e){} window.location.reload(); }} style={{background:'rgba(255,255,255,0.2)',border:'1px solid rgba(255,255,255,0.4)',color:'#fff',padding:'2px 10px',borderRadius:4,cursor:'pointer',fontSize:12}}>退出镜像</button>
+    </div>
+  );
+}
+
 function App() {
   const location = useLocation();
   const [statusState] = useContext(StatusContext);
@@ -91,7 +128,10 @@ function App() {
 
   return (
     <SetupCheck>
+      <MirrorBanner />
       <Routes>
+        <Route path='/m/:groupCode/*' element={<MirrorEntry />} />
+
         <Route
           path='/'
           element={

@@ -90,9 +90,25 @@ export function updateAPI() {
       'Cache-Control': 'no-store',
     },
   });
+  attachMirrorInterceptor(API);
 
   patchAPIInstance(API);
 }
+
+
+function attachMirrorInterceptor(inst) {
+  inst.interceptors.request.use((config) => {
+    try {
+      const code = localStorage.getItem('mirror_group_code');
+      if (code) {
+        config.headers = config.headers || {};
+        config.headers['X-Mirror-Group'] = code;
+      }
+    } catch (e) {}
+    return config;
+  });
+}
+attachMirrorInterceptor(API);
 
 API.interceptors.response.use(
   (response) => response,

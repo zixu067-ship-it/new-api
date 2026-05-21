@@ -21,6 +21,8 @@ type TopUp struct {
 	PaymentProvider string  `json:"payment_provider" gorm:"type:varchar(50);default:''"`
 	CreateTime      int64   `json:"create_time"`
 	CompleteTime    int64   `json:"complete_time"`
+  SourceGroupId   int     `json:"source_group_id" gorm:"index;default:0"`
+  MirrorDiscount  float64 `json:"mirror_discount" gorm:"type:decimal(4,3);default:1.000"`
 	Status          string  `json:"status"`
 }
 

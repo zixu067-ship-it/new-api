@@ -204,6 +204,19 @@ func RequestEpay(c *gin.Context) {
 		return
 	}
 	payMoney := getPayMoney(req.Amount, group)
+ mirrorCode := c.GetHeader("X-Mirror-Group")
+ mirrorGroupId := 0
+ mirrorDiscount := 1.0
+ if mirrorCode != "" {
+         mg, e := model.GetPromoGroupByCode(mirrorCode)
+         if e == nil && mg != nil && mg.DefaultDiscount > 0 {
+                 mirrorGroupId = mg.Id
+                 if mg.DefaultDiscount < 1 {
+                         mirrorDiscount = mg.DefaultDiscount
+                         payMoney = payMoney * mirrorDiscount
+                 }
+         }
+ }
 	if payMoney < 0.01 {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "充值金额过低"})
 		return
@@ -251,6 +264,8 @@ func RequestEpay(c *gin.Context) {
 		TradeNo:         tradeNo,
 		PaymentMethod:   req.PaymentMethod,
 		PaymentProvider: model.PaymentProviderEpay,
+         SourceGroupId:   mirrorGroupId,
+         MirrorDiscount:  mirrorDiscount,
 		CreateTime:      time.Now().Unix(),
 		Status:          common.TopUpStatusPending,
 	}
