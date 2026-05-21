@@ -1,0 +1,126 @@
+import React, { useEffect, useState } from 'react';
+import {
+  Card, Table, Tag, Typography, Avatar, Space, Button, Modal, Spin, Empty, Toast,
+} from '@douyinfe/semi-ui';
+import { API, copy as copyText, showError } from '../../helpers';
+import SiderBar from '../../components/layout/SiderBar';
+
+const { Title, Text, Paragraph } = Typography;
+
+const AgentAdmin = () => {
+  const [loading, setLoading] = useState(true);
+  const [rows, setRows] = useState([]);
+  const [detail, setDetail] = useState(null);
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const r = await API.get('/api/agent-admin/groups');
+      if (r.data.success) setRows(r.data.data || []);
+      else showError(r.data.message || '加载失败');
+    } catch (e) { showError(e.message); }
+    setLoading(false);
+  };
+  useEffect(() => { load(); }, []);
+
+  const columns = [
+    { title: '小组', dataIndex: 'group', width: 220, render: (g) => (
+        <Space>
+          <Avatar src={g.avatar_url} size="small">{g.group_name?.[0] || 'G'}</Avatar>
+          <div>
+            <div style={{ fontWeight: 600 }}>{g.group_name}</div>
+            <Text size="small" type="tertiary">码 {g.group_code}</Text>
+          </div>
+        </Space>
+    )},
+    { title: '组长', dataIndex: '_', render: (_, r) => {
+        const p = r.leader_profile;
+        return (
+          <Space vertical align="start" spacing={2}>
+            <Text strong>{p?.real_name || p?.nickname || r.leader_display_name || r.leader_username || `用户#${r.group.leader_user_id}`}</Text>
+            <Text size="small">微信：{p?.wechat_id || p?.wechat || '-'}　电话：{p?.phone || '-'}</Text>
+          </Space>
+        );
+    }},
+    { title: '组员/邀请待接受', dataIndex: 'member_count', width: 130, render: (n, r) => (
+        <Space>
+          <Tag color="blue">{n} 人</Tag>
+          {r.pending_invites > 0 && <Tag color="orange">+{r.pending_invites} 待接受</Tag>}
+        </Space>
+    )},
+    { title: '分红', dataIndex: 'group', width: 160, render: (g) => (
+        <Space vertical align="start" spacing={2}>
+          <Text size="small">当前 {Number(g.current_share_pct || 0).toFixed(2)}%</Text>
+          <Text size="small" type="tertiary">基础 {Number(g.base_share_pct || 0).toFixed(2)}%</Text>
+        </Space>
+    )},
+    { title: '折扣', dataIndex: 'group', width: 100, render: (g) => (
+        <Text>{Math.round((g.default_discount || 1) * 100) / 10} 折</Text>
+    )},
+    { title: '操作', dataIndex: '_', width: 200, render: (_, r) => (
+        <Space>
+          <Button size="small" onClick={() => setDetail(r)}>详情</Button>
+          <Button size="small" onClick={() => {
+            const url = `${window.location.origin}/m/${r.group.group_code}`;
+            copyText(url); Toast.success('已复制镜像链接');
+          }}>复制镜像链接</Button>
+        </Space>
+    )},
+  ];
+
+  return (
+    <div style={{ display: 'flex' }}>
+      <SiderBar />
+      <div style={{ flex: 1, padding: 24, minWidth: 0 }}>
+        <Card>
+          <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+            <Title heading={3}>👥 小组管理（管理员视角）</Title>
+            <Button onClick={load}>刷新</Button>
+          </Space>
+          <Paragraph type="tertiary">查看所有推广小组、组长联系方式、组员人数与分红设置</Paragraph>
+          {loading ? <Spin /> : (rows.length === 0 ? <Empty title="暂无小组" /> :
+            <Table
+              rowKey={(r) => r.group.id}
+              columns={columns}
+              dataSource={rows}
+              pagination={false}
+            />
+          )}
+        </Card>
+
+        <Modal
+          title={detail ? `小组详情：${detail.group.group_name}` : ''}
+          visible={!!detail}
+          onCancel={() => setDetail(null)}
+          footer={null}
+          width={640}
+        >
+          {detail && (
+            <div>
+              <Paragraph><b>邀请码：</b>{detail.group.group_code}</Paragraph>
+              <Paragraph><b>宣传语：</b>{detail.group.slogan || '-'}</Paragraph>
+              <Paragraph><b>对组员的话：</b>{detail.group.message_to_members || '-'}</Paragraph>
+              <Paragraph><b>当前分红比例：</b>{Number(detail.group.current_share_pct).toFixed(2)}%（基础 {Number(detail.group.base_share_pct).toFixed(2)}%）</Paragraph>
+              <Paragraph><b>充值折扣：</b>{Math.round((detail.group.default_discount || 1) * 100) / 10} 折</Paragraph>
+              <Title heading={5} style={{ marginTop: 16 }}>组长资料</Title>
+              <Paragraph><b>用户名 / 显示名：</b>{detail.leader_username || '-'} / {detail.leader_display_name || '-'}</Paragraph>
+              <Paragraph><b>真实姓名：</b>{detail.leader_profile?.real_name || '-'}</Paragraph>
+              <Paragraph><b>昵称：</b>{detail.leader_profile?.nickname || '-'}</Paragraph>
+              <Paragraph><b>电话：</b>{detail.leader_profile?.phone || '-'}</Paragraph>
+              <Paragraph><b>微信：</b>{detail.leader_profile?.wechat_id || detail.leader_profile?.wechat || '-'}</Paragraph>
+              <Paragraph><b>备注：</b>{detail.leader_profile?.remark || '-'}</Paragraph>
+              {detail.leader_profile?.wechat_qr_url && (
+                <div><b>微信收款码：</b><br/><img src={detail.leader_profile.wechat_qr_url} style={{ maxWidth: 200, marginTop: 8 }}/></div>
+              )}
+              {detail.leader_profile?.alipay_qr_url && (
+                <div style={{ marginTop: 8 }}><b>支付宝收款码：</b><br/><img src={detail.leader_profile.alipay_qr_url} style={{ maxWidth: 200, marginTop: 8 }}/></div>
+              )}
+            </div>
+          )}
+        </Modal>
+      </div>
+    </div>
+  );
+};
+
+export default AgentAdmin;

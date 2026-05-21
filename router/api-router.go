@@ -84,6 +84,12 @@ func SetApiRouter(router *gin.Engine) {
                         agentRoute.DELETE("/group/member/:id", controller.KickMember)
                         agentRoute.POST("/group/transfer", controller.TransferLeader)
                 }
+                adminAgentRoute := apiRouter.Group("/agent-admin")
+                adminAgentRoute.Use(middleware.AdminAuth())
+                {
+                        adminAgentRoute.GET("/groups", controller.GetAllPromoGroupsAdmin)
+                }
+
 		userRoute := apiRouter.Group("/user")
 		{
 			userRoute.POST("/register", middleware.CriticalRateLimit(), middleware.TurnstileCheck(), controller.Register)

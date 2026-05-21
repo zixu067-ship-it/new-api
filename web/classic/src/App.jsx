@@ -54,6 +54,7 @@ const Home = lazy(() => import('./pages/Home'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const About = lazy(() => import('./pages/About'));
 const Agent = lazy(() => import('./pages/Agent'));
+const AgentAdmin = lazy(() => import('./pages/AgentAdmin'));
 const AgentInvite = lazy(() => import('./pages/Agent/Invite'));
 const UserAgreement = lazy(() => import('./pages/UserAgreement'));
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
@@ -433,6 +434,16 @@ function App() {
                 <Chat2Link />
               </Suspense>
             </PrivateRoute>
+          }
+        />
+        <Route
+          path='/console/agent-admin'
+          element={
+            <AdminRoute>
+              <Suspense fallback={<Loading></Loading>} key={location.pathname}>
+                <AgentAdmin />
+              </Suspense>
+            </AdminRoute>
           }
         />
         <Route path='*' element={<NotFound />} />

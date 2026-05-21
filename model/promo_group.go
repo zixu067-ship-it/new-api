@@ -64,3 +64,8 @@ package model
         return DB.Save(g).Error
   }
   
+  func GetAllPromoGroups() ([]*PromoGroup, error) {
+        var groups []*PromoGroup
+        err := DB.Order("id desc").Find(&groups).Error
+        return groups, err
+  }

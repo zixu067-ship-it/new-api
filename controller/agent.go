@@ -491,3 +491,37 @@ package controller
         }
         c.JSON(http.StatusOK, gin.H{"success": true, "message": "组长转让成功，您已退出小组"})
   }
+  func GetAllPromoGroupsAdmin(c *gin.Context) {
+        groups, err := model.GetAllPromoGroups()
+        if err != nil {
+                c.JSON(http.StatusOK, gin.H{"success": false, "message": "查询失败"})
+                return
+        }
+        list := make([]gin.H, 0, len(groups))
+        for _, g := range groups {
+                leaderProfile, _ := model.GetAgentProfileByUserId(g.LeaderUserId)
+                leaderUser, _ := model.GetUserById(g.LeaderUserId, false)
+                members, _ := model.GetPromoMembersByGroup(g.Id)
+                active := 0
+                pending := 0
+                for _, m := range members {
+                        if m.Status == 1 && m.UserId > 0 {
+                                active++
+                        } else if m.Status == 0 {
+                                pending++
+                        }
+                }
+                item := gin.H{
+                        "group":          g,
+                        "leader_profile": leaderProfile,
+                        "member_count":   active,
+                        "pending_invites": pending,
+                }
+                if leaderUser != nil {
+                        item["leader_username"] = leaderUser.Username
+                        item["leader_display_name"] = leaderUser.DisplayName
+                }
+                list = append(list, item)
+        }
+        c.JSON(http.StatusOK, gin.H{"success": true, "data": list})
+  }

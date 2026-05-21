@@ -1113,6 +1113,22 @@ const MemberDashboard = ({ profile, group, leader, me, leaderboard, reload }) =>
         </div>
       </div>
 
+      {group?.group_code && (
+        <Card className="agent-glass" style={{ marginTop: 16, background: 'linear-gradient(135deg, rgba(199,36,177,0.08), rgba(79,195,247,0.08))' }}>
+          <Title heading={4}>🌐 我的推广链接</Title>
+          <Text type="tertiary">分享给好友，他们通过这个链接充值你都有分红</Text>
+          <Divider />
+          <Input
+            value={`${window.location.origin}/m/${group.group_code}`}
+            readonly
+            suffix={<Button icon={<IconCopy />} onClick={() => copyText(`${window.location.origin}/m/${group.group_code}`)}>复制</Button>}
+          />
+          <div style={{ marginTop: 8, color: '#888', fontSize: 12 }}>
+            提示：通过此链接注册并充值的用户，你将获得 {Number(0).toFixed ? '' : ''}组内分红。
+          </div>
+        </Card>
+      )}
+
       <Card className="agent-glass" style={{ marginTop: 16 }}>
         <Title heading={4}>👑 我的组长</Title>
         <Divider />
