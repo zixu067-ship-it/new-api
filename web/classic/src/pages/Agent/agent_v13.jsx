@@ -749,9 +749,9 @@ const LeaderDashboard = ({ profile, group, members, leaderboard, reload }) => {
               <div>
                 <Text strong>镜像站路径</Text>
                 <Input
-                  value={`${window.location.origin}/m/${group?.mirror_slug || group?.id}`}
+                  value={`${window.location.origin}/m/${group?.group_code || group?.mirror_slug || group?.id}`}
                   readonly
-                  suffix={<Button icon={<IconCopy />} onClick={() => copyText(`${window.location.origin}/m/${group?.mirror_slug || group?.id}`)}>复制</Button>}
+                  suffix={<Button icon={<IconCopy />} onClick={() => copyText(`${window.location.origin}/m/${group?.group_code || group?.mirror_slug || group?.id}`)}>复制</Button>}
                 />
               </div>
               <div>

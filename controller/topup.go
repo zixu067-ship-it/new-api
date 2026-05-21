@@ -444,6 +444,13 @@ func RequestAmount(c *gin.Context) {
 		return
 	}
 	payMoney := getPayMoney(req.Amount, group)
+	mirrorCode := c.GetHeader("X-Mirror-Group")
+	if mirrorCode != "" {
+		mg, e := model.GetPromoGroupByCode(mirrorCode)
+		if e == nil && mg != nil && mg.DefaultDiscount > 0 && mg.DefaultDiscount < 1 {
+			payMoney = payMoney * mg.DefaultDiscount
+		}
+	}
 	if payMoney <= 0.01 {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "充值金额过低"})
 		return
