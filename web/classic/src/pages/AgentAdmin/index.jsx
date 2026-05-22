@@ -21,7 +21,7 @@ const AgentAdmin = () => {
       const r = await API.get('/api/agent-admin/groups');
       if (r.data.success) {
         const list = (r.data.data || []).slice();
-        list.sort((a, b) => (b.total_earnings || 0) - (a.total_earnings || 0));
+        list.sort((a, b) => (b.weekly_topup_sum || 0) - (a.weekly_topup_sum || 0));
         setRows(list);
       }
       else showError(r.data.message || '加载失败');
@@ -83,10 +83,11 @@ const AgentAdmin = () => {
           {r.pending_invites > 0 && <Tag color="orange">+{r.pending_invites} 待接受</Tag>}
         </Space>
     )},
-    { title: '总收益 / 排行', dataIndex: 'total_earnings', width: 160, sorter: (a, b) => (a.total_earnings||0) - (b.total_earnings||0), render: (v, r) => (
+    { title: '本周累计充值 / 应分红', dataIndex: 'weekly_topup_sum', width: 200, sorter: (a, b) => (a.weekly_topup_sum||0) - (b.weekly_topup_sum||0), render: (v, r) => (
         <Space vertical align="start" spacing={2}>
-          <Text strong style={{ color: '#6E3FE7' }}>¥{Number(v || 0).toFixed(2)}</Text>
-          {r.pending_earnings > 0 && <Text size="small" type="warning">待结算 ¥{Number(r.pending_earnings).toFixed(2)}</Text>}
+          <Text strong style={{ color: '#6E3FE7' }}>充值 ¥{Number(v || 0).toFixed(2)}</Text>
+          <Text size="small" type="success">应分红 ¥{Number(r.weekly_group_share || 0).toFixed(2)}</Text>
+          <Text size="small" type="tertiary">= 充值 × 50% × {Number(r.group?.current_share_pct||0).toFixed(2)}%</Text>
         </Space>
     )},
     { title: '分红', dataIndex: 'group', width: 200, render: (g) => (

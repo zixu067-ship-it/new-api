@@ -361,7 +361,7 @@ const IntroPage = ({ onApply, leaderboard }) => {
       {top && (
         <div className="agent-v3-banner">
           <IconCrown style={{ fontSize: 18 }} />
-          <span>本周冠军：<b>{top.group_name}</b> · 周收益 ¥{Number(top.weekly_revenue || 0).toFixed(2)} · 已解锁 +10% 分红加成 🎉</span>
+          <span>本周冠军：<b>{top.group_name}</b> · 本周充值 ¥{Number(top.weekly_topup_sum || 0).toFixed(2)} · 已解锁 +10% 分红加成 🎉</span>
         </div>
       )}
 
@@ -588,6 +588,7 @@ const GroupCreateForm = ({ onSave }) => {
 /*  组长仪表盘                                                            */
 /* ================================================================== */
 const LeaderDashboard = ({ profile, group, members, leaderboard, reload }) => {
+  const [howOpen, setHowOpen] = useState(false);
   const [tab, setTab] = useState('overview');
   const [editGroup, setEditGroup] = useState(false);
   const [editProfile, setEditProfile] = useState(false);
@@ -737,7 +738,10 @@ const LeaderDashboard = ({ profile, group, members, leaderboard, reload }) => {
       <Card className="agent-glass agent-v3-content">
         {tab === 'overview' && (
           <div>
-            <Title heading={3}>📊 小组概览</Title>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+              <Title heading={3} style={{ margin: 0 }}>📊 小组概览</Title>
+              <Button theme="solid" type="primary" onClick={() => setHowOpen(true)}>🧮 怎么计算分红？</Button>
+            </div>
             <div className="agent-v3-stat-grid" style={{ marginTop: 16 }}>
               <div className="agent-v3-stat">
                 <div className="agent-v3-stat-label">本周排名</div>
@@ -756,12 +760,16 @@ const LeaderDashboard = ({ profile, group, members, leaderboard, reload }) => {
                 <div className="agent-v3-stat-value">{pct(totalShare)}</div>
               </div>
               <div className="agent-v3-stat">
-                <div className="agent-v3-stat-label">本周收益</div>
-                <div className="agent-v3-stat-value">¥{Number(group?.weekly_revenue || 0).toFixed(2)}</div>
+                <div className="agent-v3-stat-label">本周累计充值</div>
+                <div className="agent-v3-stat-value">¥{Number(group?.weekly_topup_sum || 0).toFixed(2)}</div>
               </div>
               <div className="agent-v3-stat">
-                <div className="agent-v3-stat-label">累计收益</div>
-                <div className="agent-v3-stat-value">¥{Number(group?.total_revenue || 0).toFixed(2)}</div>
+                <div className="agent-v3-stat-label">
+                  <Tooltip content="净利润 = 累计充值 × 50%；小组总分红 = 净利润 × 当前小组分红比例">
+                    小组总分红 <span style={{ color: '#999', fontSize: 12 }}>ⓘ</span>
+                  </Tooltip>
+                </div>
+                <div className="agent-v3-stat-value">¥{Number(group?.weekly_group_share || 0).toFixed(2)}</div>
               </div>
             </div>
 
@@ -826,7 +834,11 @@ const LeaderDashboard = ({ profile, group, members, leaderboard, reload }) => {
                     <Space align="start">
                       <Avatar src={m.avatar}>{(m.nickname || m.username || '?')[0]}</Avatar>
                       <div>
-                        <div><b>{m.nickname || m.username}</b> <Tag size="small">分红 {pct(m.share_pct_in_group)}</Tag></div>
+                        <div>
+                          <b>{m.nickname || m.username}</b>
+                          <Tag size="small" style={{ marginLeft: 6 }}>分红 {pct(m.share_pct_in_group)}</Tag>
+                          <Tag size="small" color="green" style={{ marginLeft: 6 }}>本周应分红 ¥{Number(m.weekly_share_amount || 0).toFixed(2)}</Tag>
+                        </div>
                         <div style={{ marginTop: 4, fontSize: 13, color: '#666' }}>
                           <IconPhone size="small" /> {m.phone || '-'}
                           微信 {m.wechat || '-'}
@@ -960,7 +972,7 @@ const LeaderDashboard = ({ profile, group, members, leaderboard, reload }) => {
                         {rk <= 5 && <Tag color="orange">+10% 加成中</Tag>}
                       </Space>
                       <Space>
-                        <Text>周收益 ¥{Number(g.weekly_revenue || 0).toFixed(2)}</Text>
+                        <Text>本周充值 ¥{Number(g.weekly_topup_sum || 0).toFixed(2)}</Text>
                       </Space>
                     </Space>
                   </Card>
@@ -1029,9 +1041,13 @@ const LeaderDashboard = ({ profile, group, members, leaderboard, reload }) => {
         <Space>
           <InputNumber min={0} max={100} step={1} value={editPct} onChange={(v) => setEditPct(v || 0)} />
           <Text>%</Text>
+          <Tag color="green">本周应分红 ¥{(Number(group?.weekly_group_share || 0) * (Number(editPct) || 0) / 100).toFixed(2)}</Tag>
         </Space>
         <div style={{ marginTop: 8, color: '#888', fontSize: 13 }}>
           当前剩余可分配：{((remainPct + toFrac(editMember?.share_pct_in_group || 0)) * 100).toFixed(0)}%
+        </div>
+        <div style={{ marginTop: 4, color: '#888', fontSize: 12 }}>
+          应分红 = 小组总分红（¥{Number(group?.weekly_group_share || 0).toFixed(2)}）× 该组员分红比例
         </div>
       </Modal>
 
@@ -1055,6 +1071,22 @@ const LeaderDashboard = ({ profile, group, members, leaderboard, reload }) => {
         width={640}
       >
         <ProfileForm initial={profile} mode="edit" onSave={handleSaveProfile} onCancel={() => setEditProfile(false)} />
+      </Modal>
+
+      {/* 怎么计算分红弹窗 */}
+      <Modal
+        title="🧮 分红怎么计算？"
+        visible={howOpen}
+        onCancel={() => setHowOpen(false)}
+        footer={null}
+        width={560}
+      >
+        <Paragraph>1. <b>净利润 = 累计充值 × 50%</b>（平台默认毛利率）</Paragraph>
+        <Paragraph>2. <b>小组总分红 = 净利润 × 小组分红比例</b>（基础 25% + 排行榜加成，最高 70%）</Paragraph>
+        <Paragraph>3. <b>组员应分红 = 小组总分红 × 个人分红比例</b></Paragraph>
+        <Divider />
+        <Paragraph type="warning">📅 组长每周日为各自组员结算分红。冲榜上前 5 还能解锁 +10% 加成，下周直接到账！</Paragraph>
+        <Paragraph type="tertiary" style={{ fontSize: 12 }}>💡 提示：分红每周一 00:00 重置，本周累计充值越多，下周分红越大。一起冲榜吧！</Paragraph>
       </Modal>
     </div>
   );
@@ -1105,6 +1137,8 @@ const GroupEditInline = ({ initial, onSave }) => {
 const MemberDashboard = ({ profile, group, leader, me, leaderboard, reload }) => {
   const [editProfile, setEditProfile] = useState(false);
   const [introOpen, setIntroOpen] = useState(false);
+  const [howOpen, setHowOpen] = useState(false);
+  const [howOpen, setHowOpen] = useState(false);
 
   const myRank = useMemo(() => {
     const idx = leaderboard.findIndex((g) => g.group_id === (group?.id || 0));
@@ -1169,6 +1203,14 @@ const MemberDashboard = ({ profile, group, leader, me, leaderboard, reload }) =>
         </Space>
       </Card>
 
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+        <Button theme="solid" type="primary" onClick={() => setHowOpen(true)}>🧮 怎么计算分红？</Button>
+      </div>
+
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+        <Button theme="solid" type="primary" onClick={() => setHowOpen(true)}>🧮 怎么计算分红？</Button>
+      </div>
+
       <div className="agent-v3-stat-grid">
         <div className="agent-v3-stat">
           <div className="agent-v3-stat-label">我的分红比例</div>
@@ -1179,12 +1221,20 @@ const MemberDashboard = ({ profile, group, leader, me, leaderboard, reload }) =>
           <div className="agent-v3-stat-value">{myRank ? `#${myRank}` : '未上榜'}</div>
         </div>
         <div className="agent-v3-stat">
-          <div className="agent-v3-stat-label">我的本周收益</div>
-          <div className="agent-v3-stat-value">¥{Number(profile?.weekly_revenue || 0).toFixed(2)}</div>
+          <div className="agent-v3-stat-label">
+            <Tooltip content="本周该小组镜像站累计充值总额">
+              镜像站累计充值 <span style={{ color: '#999', fontSize: 12 }}>ⓘ</span>
+            </Tooltip>
+          </div>
+          <div className="agent-v3-stat-value">¥{Number(group?.weekly_topup_sum || 0).toFixed(2)}</div>
         </div>
         <div className="agent-v3-stat">
-          <div className="agent-v3-stat-label">我的累计收益</div>
-          <div className="agent-v3-stat-value">¥{Number(profile?.total_revenue || 0).toFixed(2)}</div>
+          <div className="agent-v3-stat-label">
+            <Tooltip content="我的分红 = 小组总分红 × 我的分红比例。净利润=累计充值×50%，小组总分红=净利润×小组分红比例">
+              我的分红 <span style={{ color: '#999', fontSize: 12 }}>ⓘ</span>
+            </Tooltip>
+          </div>
+          <div className="agent-v3-stat-value">¥{Number(group?.weekly_my_share || 0).toFixed(2)}</div>
         </div>
       </div>
 
@@ -1249,7 +1299,7 @@ const MemberDashboard = ({ profile, group, leader, me, leaderboard, reload }) =>
                   {mine && <Tag color="violet">我的小组</Tag>}
                   {rk <= 5 && <Tag color="orange">+10% 加成中</Tag>}
                 </Space>
-                <Text>周收益 ¥{Number(g.weekly_revenue || 0).toFixed(2)}</Text>
+                <Text>本周充值 ¥{Number(g.weekly_topup_sum || 0).toFixed(2)}</Text>
               </Space>
             </Card>
           );
@@ -1274,6 +1324,22 @@ const MemberDashboard = ({ profile, group, leader, me, leaderboard, reload }) =>
         width={960}
       >
         <IntroPage onApply={() => setIntroOpen(false)} leaderboard={leaderboard} />
+      </Modal>
+
+      {/* 怎么计算分红弹窗 */}
+      <Modal
+        title="🧮 分红怎么计算？"
+        visible={howOpen}
+        onCancel={() => setHowOpen(false)}
+        footer={null}
+        width={560}
+      >
+        <Paragraph>1. <b>净利润 = 累计充值 × 50%</b>（平台默认毛利率）</Paragraph>
+        <Paragraph>2. <b>小组总分红 = 净利润 × 小组分红比例</b>（基础 25% + 排行榜加成，最高 70%）</Paragraph>
+        <Paragraph>3. <b>我的分红 = 小组总分红 × 我的分红比例</b></Paragraph>
+        <Divider />
+        <Paragraph type="warning">📅 组长每周日为各自组员结算分红。冲榜上前 5 还能解锁 +10% 加成，下周直接到账！</Paragraph>
+        <Paragraph type="tertiary" style={{ fontSize: 12 }}>💡 提示：分红每周一 00:00 重置，本周累计充值越多，下周分红越大。一起冲榜吧！</Paragraph>
       </Modal>
     </div>
   );
