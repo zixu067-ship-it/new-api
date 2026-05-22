@@ -1497,6 +1497,11 @@ const Agent = () => {
       }
       setProfile(profileData);
 
+      const lb = await API.get('/api/agent/leaderboard').catch(() => null);
+      if (lb && lb.data && lb.data.success && Array.isArray(lb.data.data)) {
+        setLeaderboard(lb.data.data);
+      }
+
       const gr = await API.get('/api/agent/group').catch(() => null);
       if (!gr || !gr.data || !gr.data.success || !gr.data.data) {
         setPhase('group-create');
