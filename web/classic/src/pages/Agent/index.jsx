@@ -969,7 +969,7 @@ const LeaderDashboard = ({ profile, group, members, leaderboard, reload }) => {
                         <span className={`agent-v3-rank ${cls}`}>{rk}</span>
                         <Avatar src={g.avatar_url} size="default" style={{ background: 'linear-gradient(135deg,#C724B1,#4FC3F7)' }}>{g.group_name?.[0] || 'G'}</Avatar>
                         <div>
-                          <div><b>{g.group_name}</b>{mine && <Tag color="violet" style={{ marginLeft: 6 }}>我的小组</Tag>}{rk <= 5 && <Tag color="orange" style={{ marginLeft: 6 }}>+10% 加成中</Tag>}</div>
+                          <div><b>{g.group_name}</b>{mine && <Tag color="violet" style={{ marginLeft: 6 }}>我的小组</Tag>}{rk <= 5 && <Tag color="orange" style={{ marginLeft: 6 }}>下周起+10% 加成</Tag>}</div>
                           {g.slogan && <div style={{ color: '#888', fontSize: 12 }}>"{g.slogan}"</div>}
                           <div style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
                             <Avatar src={g.leader?.avatar_url} size="extra-small">{(g.leader?.real_name || g.leader?.display_name || g.leader?.username)?.[0]}</Avatar>
@@ -1301,7 +1301,7 @@ const MemberDashboard = ({ profile, group, leader, me, leaderboard, reload }) =>
                   <span className={`agent-v3-rank ${cls}`}>{rk}</span>
                   <Avatar src={g.avatar_url} size="default" style={{ background: 'linear-gradient(135deg,#C724B1,#4FC3F7)' }}>{g.group_name?.[0] || 'G'}</Avatar>
                   <div>
-                    <div><b>{g.group_name}</b>{mine && <Tag color="violet" style={{ marginLeft: 6 }}>我的小组</Tag>}{rk <= 5 && <Tag color="orange" style={{ marginLeft: 6 }}>+10% 加成中</Tag>}</div>
+                    <div><b>{g.group_name}</b>{mine && <Tag color="violet" style={{ marginLeft: 6 }}>我的小组</Tag>}{rk <= 5 && <Tag color="orange" style={{ marginLeft: 6 }}>下周起+10% 加成</Tag>}</div>
                     {g.slogan && <div style={{ color: '#888', fontSize: 12 }}>"{g.slogan}"</div>}
                     <div style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
                       <Avatar src={g.leader?.avatar_url} size="extra-small">{(g.leader?.real_name || g.leader?.display_name || g.leader?.username)?.[0]}</Avatar>
@@ -1510,7 +1510,7 @@ const Agent = () => {
       }
       // 后端返回结构: { group: {...小组本体...}, is_leader, me, members: [...] }
       const raw = gr.data.data;
-      const g = raw.group || raw;
+      const g = { ...(raw.group || raw), weekly_topup_sum: raw.weekly_topup_sum, weekly_group_share: raw.weekly_group_share, weekly_my_share: raw.weekly_my_share };
       setGroup(g);
       setMe(raw.me || null);
       const isLeader = !!raw.is_leader;
