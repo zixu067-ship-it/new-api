@@ -1143,7 +1143,6 @@ const MemberDashboard = ({ profile, group, leader, me, leaderboard, reload }) =>
   const [editProfile, setEditProfile] = useState(false);
   const [introOpen, setIntroOpen] = useState(false);
   const [howOpen, setHowOpen] = useState(false);
-  const [howOpen, setHowOpen] = useState(false);
 
   const myRank = useMemo(() => {
     const idx = leaderboard.findIndex((g) => g.group_id === (group?.id || 0));
