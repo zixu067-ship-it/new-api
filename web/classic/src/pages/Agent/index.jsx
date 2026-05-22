@@ -964,16 +964,21 @@ const LeaderDashboard = ({ profile, group, members, leaderboard, reload }) => {
                 const mine = g.group_id === (group?.id || 0);
                 return (
                   <Card key={g.group_id} style={{ marginBottom: 8, background: mine ? '#fff5fa' : undefined, border: mine ? '2px solid #C724B1' : undefined }}>
-                    <Space style={{ width: '100%', justifyContent: 'space-between' }}>
-                      <Space>
+                    <Space style={{ width: '100%', justifyContent: 'space-between' }} align="start">
+                      <Space align="start">
                         <span className={`agent-v3-rank ${cls}`}>{rk}</span>
-                        <b>{g.group_name}</b>
-                        {mine && <Tag color="violet">我的小组</Tag>}
-                        {rk <= 5 && <Tag color="orange">+10% 加成中</Tag>}
+                        <Avatar src={g.avatar_url} size="default" style={{ background: 'linear-gradient(135deg,#C724B1,#4FC3F7)' }}>{g.group_name?.[0] || 'G'}</Avatar>
+                        <div>
+                          <div><b>{g.group_name}</b>{mine && <Tag color="violet" style={{ marginLeft: 6 }}>我的小组</Tag>}{rk <= 5 && <Tag color="orange" style={{ marginLeft: 6 }}>+10% 加成中</Tag>}</div>
+                          {g.slogan && <div style={{ color: '#888', fontSize: 12 }}>"{g.slogan}"</div>}
+                          <div style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <Avatar src={g.leader?.avatar_url} size="extra-small">{(g.leader?.real_name || g.leader?.display_name || g.leader?.username)?.[0]}</Avatar>
+                            <Text type="tertiary" style={{ fontSize: 12 }}>组长 {g.leader?.real_name || g.leader?.display_name || g.leader?.username || '-'}</Text>
+                            <Text type="tertiary" style={{ fontSize: 12 }}>· 组员 {(g.members || []).length} 人</Text>
+                          </div>
+                        </div>
                       </Space>
-                      <Space>
-                        <Text>本周充值 ¥{Number(g.weekly_topup_sum || 0).toFixed(2)}</Text>
-                      </Space>
+                      <Text style={{ whiteSpace: 'nowrap' }}>本周充值 ¥{Number(g.weekly_topup_sum || 0).toFixed(2)}</Text>
                     </Space>
                   </Card>
                 );
@@ -1292,14 +1297,21 @@ const MemberDashboard = ({ profile, group, leader, me, leaderboard, reload }) =>
           const mine = g.group_id === (group?.id || 0);
           return (
             <Card key={g.group_id} style={{ marginBottom: 8, background: mine ? '#fff5fa' : undefined }}>
-              <Space style={{ width: '100%', justifyContent: 'space-between' }}>
-                <Space>
+              <Space style={{ width: '100%', justifyContent: 'space-between' }} align="start">
+                <Space align="start">
                   <span className={`agent-v3-rank ${cls}`}>{rk}</span>
-                  <b>{g.group_name}</b>
-                  {mine && <Tag color="violet">我的小组</Tag>}
-                  {rk <= 5 && <Tag color="orange">+10% 加成中</Tag>}
+                  <Avatar src={g.avatar_url} size="default" style={{ background: 'linear-gradient(135deg,#C724B1,#4FC3F7)' }}>{g.group_name?.[0] || 'G'}</Avatar>
+                  <div>
+                    <div><b>{g.group_name}</b>{mine && <Tag color="violet" style={{ marginLeft: 6 }}>我的小组</Tag>}{rk <= 5 && <Tag color="orange" style={{ marginLeft: 6 }}>+10% 加成中</Tag>}</div>
+                    {g.slogan && <div style={{ color: '#888', fontSize: 12 }}>"{g.slogan}"</div>}
+                    <div style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <Avatar src={g.leader?.avatar_url} size="extra-small">{(g.leader?.real_name || g.leader?.display_name || g.leader?.username)?.[0]}</Avatar>
+                      <Text type="tertiary" style={{ fontSize: 12 }}>组长 {g.leader?.real_name || g.leader?.display_name || g.leader?.username || '-'}</Text>
+                      <Text type="tertiary" style={{ fontSize: 12 }}>· 组员 {(g.members || []).length} 人</Text>
+                    </div>
+                  </div>
                 </Space>
-                <Text>本周充值 ¥{Number(g.weekly_topup_sum || 0).toFixed(2)}</Text>
+                <Text style={{ whiteSpace: 'nowrap' }}>本周充值 ¥{Number(g.weekly_topup_sum || 0).toFixed(2)}</Text>
               </Space>
             </Card>
           );
