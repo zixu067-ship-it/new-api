@@ -106,5 +106,5 @@ package model
                 MemberBreakdown:  string(mbJson),
                 SettlementStatus: "pending",
         }
-        DB.Create(&record)
+        record.Insert()
   }
