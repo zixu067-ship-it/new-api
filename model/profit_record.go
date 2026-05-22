@@ -66,16 +66,20 @@ package model
   }
   func RecordProfitFromTopUp(userId int, topUp *TopUp) {
         var groupId int
-        var attr UserGroupAttribution
-        if err := DB.Where("user_id = ?", userId).First(&attr).Error; err == nil {
-                groupId = attr.GroupId
+        // 1) Prefer the mirror site the user actually used for this topup.
+        if topUp != nil && topUp.SourceGroupId > 0 {
+                groupId = topUp.SourceGroupId
         } else {
-                // fallback: user might be a leader / co-leader / member in promo_members
-                member, mErr := GetPromoMemberByUserId(userId)
-                if mErr != nil || member == nil || member.Status != 1 {
-                        return
+                var attr UserGroupAttribution
+                if err := DB.Where("user_id = ?", userId).First(&attr).Error; err == nil {
+                        groupId = attr.GroupId
+                } else {
+                        member, mErr := GetPromoMemberByUserId(userId)
+                        if mErr != nil || member == nil || member.Status != 1 {
+                                return
+                        }
+                        groupId = member.GroupId
                 }
-                groupId = member.GroupId
         }
         group, err := GetPromoGroupById(groupId)
         if err != nil {
@@ -90,7 +94,7 @@ package model
         memberBreakdown := map[string]float64{}
         for _, m := range members {
                 if m.Role == "member" && m.Status == 1 && m.UserId > 0 && m.SharePctInGroup > 0 {
-                        memberBreakdown[fmt.Sprintf("%d", m.UserId)] = groupShareAmount * m.SharePctInGroup / 100.0
+                        memberBreakdown[fmt.Sprintf("%d", m.UserId)] = groupShareAmount * m.SharePctInGroup
                 }
         }
         mbJson, _ := json.Marshal(memberBreakdown)

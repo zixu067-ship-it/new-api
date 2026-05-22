@@ -69,7 +69,7 @@ package controller
         }
         members, _ := model.GetPromoMembersByGroup(group.Id)
         ws := model.GetWeeklyStatsForGroup(group.Id)
-        myShareAmount := ws.WeeklyGroupShare * member.SharePctInGroup / 100.0
+        myShareAmount := ws.WeeklyGroupShare * member.SharePctInGroup
         c.JSON(http.StatusOK, gin.H{
                 "success": true,
                 "data": gin.H{
@@ -123,7 +123,7 @@ package controller
                 if m.Role == "leader" || m.UserId == 0 {
                         continue
                 }
-                shareAmount := ws.WeeklyGroupShare * m.SharePctInGroup / 100.0
+                shareAmount := ws.WeeklyGroupShare * m.SharePctInGroup
                 item := map[string]interface{}{
                         "member_id":          m.Id,
                         "user_id":            m.UserId,
