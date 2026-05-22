@@ -26,7 +26,9 @@ function ImagePicker({ value, onChange, placeholder, style }) {
     try {
       const fd = new FormData();
       fd.append('file', file);
-      const res = await fetch('/api/upload/image', { method: 'POST', body: fd, credentials: 'include' });
+      let userId = -1;
+      try { const u = localStorage.getItem('user'); if (u) userId = JSON.parse(u).id; } catch(_){}
+      const res = await fetch('/api/upload/image', { method: 'POST', body: fd, credentials: 'include', headers: { 'New-API-User': String(userId) } });
       const data = await res.json();
       if (data && data.success && data.data && data.data.url) {
         onChange && onChange(data.data.url);
