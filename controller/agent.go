@@ -68,13 +68,18 @@ package controller
                 return
         }
         members, _ := model.GetPromoMembersByGroup(group.Id)
+        ws := model.GetWeeklyStatsForGroup(group.Id)
+        myShareAmount := ws.WeeklyGroupShare * member.SharePctInGroup / 100.0
         c.JSON(http.StatusOK, gin.H{
                 "success": true,
                 "data": gin.H{
-                        "group":     group,
-                        "me":        member,
-                        "members":   members,
-                        "is_leader": member.Role == "leader",
+                        "group":             group,
+                        "me":                member,
+                        "members":           members,
+                        "is_leader":         member.Role == "leader",
+                        "weekly_topup_sum":  ws.WeeklyTopupSum,
+                        "weekly_group_share": ws.WeeklyGroupShare,
+                        "weekly_my_share":   myShareAmount,
                 },
         })
   }
@@ -112,17 +117,20 @@ package controller
                 return
         }
         members, _ := model.GetPromoMembersByGroup(group.Id)
+        ws := model.GetWeeklyStatsForGroup(group.Id)
         var result []map[string]interface{}
         for _, m := range members {
                 if m.Role == "leader" || m.UserId == 0 {
                         continue
                 }
+                shareAmount := ws.WeeklyGroupShare * m.SharePctInGroup / 100.0
                 item := map[string]interface{}{
                         "member_id":          m.Id,
                         "user_id":            m.UserId,
                         "share_pct":          m.SharePctInGroup,
                         "share_pct_in_group": m.SharePctInGroup,
                         "status":             m.Status,
+                        "weekly_share_amount": shareAmount,
                 }
                 if u, errU := model.GetUserById(m.UserId, false); errU == nil && u != nil {
                         item["username"] = u.Username
@@ -518,17 +526,14 @@ package controller
                                 pending++
                         }
                 }
-                var totalEarnings float64
-                model.DB.Model(&model.ProfitRecord{}).Where("group_id = ?", g.Id).Select("COALESCE(SUM(group_share_amount), 0)").Scan(&totalEarnings)
-                var pendingEarnings float64
-                model.DB.Model(&model.ProfitRecord{}).Where("group_id = ? AND settlement_status = ?", g.Id, "pending").Select("COALESCE(SUM(group_share_amount), 0)").Scan(&pendingEarnings)
+                ws := model.GetWeeklyStatsForGroup(g.Id)
                 item := gin.H{
-                        "group":          g,
-                        "leader_profile": leaderProfile,
-                        "member_count":   active,
-                        "pending_invites": pending,
-                        "total_earnings": totalEarnings,
-                        "pending_earnings": pendingEarnings,
+                        "group":              g,
+                        "leader_profile":     leaderProfile,
+                        "member_count":       active,
+                        "pending_invites":    pending,
+                        "weekly_topup_sum":   ws.WeeklyTopupSum,
+                        "weekly_group_share": ws.WeeklyGroupShare,
                 }
                 if leaderUser != nil {
                         item["leader_username"] = leaderUser.Username

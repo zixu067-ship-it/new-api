@@ -83,7 +83,9 @@ package model
         }
         topupAmount := topUp.Money
         groupSharePct := group.CurrentSharePct
-        groupShareAmount := topupAmount * groupSharePct / 100.0
+        // 净利润 = 充值 × 50%；小组总分红 = 净利润 × 小组分红比例
+        netProfit := topupAmount * 0.5
+        groupShareAmount := netProfit * groupSharePct / 100.0
         members, _ := GetPromoMembersByGroup(group.Id)
         memberBreakdown := map[string]float64{}
         for _, m := range members {

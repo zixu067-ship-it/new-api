@@ -113,6 +113,9 @@ func main() {
 
 	go controller.AutomaticallyTestChannels()
 
+	// Promo leaderboard weekly snapshot (Sunday 23:59 local)
+	go controller.StartPromoLeaderboardCron()
+
 	// Codex credential auto-refresh check every 10 minutes, refresh when expires within 1 day
 	service.StartCodexCredentialAutoRefreshTask()
 
