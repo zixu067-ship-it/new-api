@@ -557,7 +557,7 @@ func SetGroupSharePct(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"success": true, "data": g})
 }
 
-func DissolveGroup(c *gin.Context) {
+func DissolveGroupAdmin(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {

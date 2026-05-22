@@ -90,7 +90,7 @@ func SetApiRouter(router *gin.Engine) {
                 {
                         adminAgentRoute.GET("/groups", controller.GetAllPromoGroupsAdmin)
                         adminAgentRoute.PUT("/groups/:id/share-pct", controller.SetGroupSharePct)
-                        adminAgentRoute.DELETE("/groups/:id", controller.DissolveGroup)
+                        adminAgentRoute.DELETE("/groups/:id", controller.DissolveGroupAdmin)
                 }
 		apiRouter.POST("/upload/image", middleware.UserAuth(), controller.UploadImage)
 
