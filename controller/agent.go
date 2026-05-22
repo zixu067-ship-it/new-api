@@ -511,11 +511,17 @@ package controller
                                 pending++
                         }
                 }
+                var totalEarnings float64
+                model.DB.Model(&model.ProfitRecord{}).Where("group_id = ?", g.Id).Select("COALESCE(SUM(group_share_amount), 0)").Scan(&totalEarnings)
+                var pendingEarnings float64
+                model.DB.Model(&model.ProfitRecord{}).Where("group_id = ? AND settlement_status = ?", g.Id, "pending").Select("COALESCE(SUM(group_share_amount), 0)").Scan(&pendingEarnings)
                 item := gin.H{
                         "group":          g,
                         "leader_profile": leaderProfile,
                         "member_count":   active,
                         "pending_invites": pending,
+                        "total_earnings": totalEarnings,
+                        "pending_earnings": pendingEarnings,
                 }
                 if leaderUser != nil {
                         item["leader_username"] = leaderUser.Username

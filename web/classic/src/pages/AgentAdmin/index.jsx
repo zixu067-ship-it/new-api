@@ -19,7 +19,11 @@ const AgentAdmin = () => {
     setLoading(true);
     try {
       const r = await API.get('/api/agent-admin/groups');
-      if (r.data.success) setRows(r.data.data || []);
+      if (r.data.success) {
+        const list = (r.data.data || []).slice();
+        list.sort((a, b) => (b.total_earnings || 0) - (a.total_earnings || 0));
+        setRows(list);
+      }
       else showError(r.data.message || '加载失败');
     } catch (e) { showError(e.message); }
     setLoading(false);
@@ -54,8 +58,9 @@ const AgentAdmin = () => {
   };
 
   const columns = [
-    { title: '小组', dataIndex: 'group', width: 220, render: (g) => (
+    { title: '小组', dataIndex: 'group', width: 240, render: (g, r, idx) => (
         <Space>
+          <Tag color={idx === 0 ? 'amber' : idx === 1 ? 'grey' : idx === 2 ? 'orange' : 'white'} style={{ minWidth: 32, textAlign: 'center' }}>#{idx + 1}</Tag>
           <Avatar src={g.avatar_url} size="small">{g.group_name?.[0] || 'G'}</Avatar>
           <div>
             <div style={{ fontWeight: 600 }}>{g.group_name}</div>
@@ -76,6 +81,12 @@ const AgentAdmin = () => {
         <Space>
           <Tag color="blue">{n} 人</Tag>
           {r.pending_invites > 0 && <Tag color="orange">+{r.pending_invites} 待接受</Tag>}
+        </Space>
+    )},
+    { title: '总收益 / 排行', dataIndex: 'total_earnings', width: 160, sorter: (a, b) => (a.total_earnings||0) - (b.total_earnings||0), render: (v, r) => (
+        <Space vertical align="start" spacing={2}>
+          <Text strong style={{ color: '#6E3FE7' }}>¥{Number(v || 0).toFixed(2)}</Text>
+          {r.pending_earnings > 0 && <Text size="small" type="warning">待结算 ¥{Number(r.pending_earnings).toFixed(2)}</Text>}
         </Space>
     )},
     { title: '分红', dataIndex: 'group', width: 200, render: (g) => (

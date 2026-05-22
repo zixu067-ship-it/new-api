@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import {
   Card, Button, Toast, Typography, Space, Spin, Tag, Banner,
   Modal, InputNumber, Avatar, Input, Form, Divider, Empty, Tooltip,
@@ -12,6 +12,79 @@ import {
 import { API } from '../../helpers';
 
 const { Title, Text, Paragraph } = Typography;
+
+/* ============ ImagePicker: URL输入 + 本地上传 + 拖拽 ============ */
+function ImagePicker({ value, onChange, placeholder, style }) {
+  const [uploading, setUploading] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+  const inputRef = useRef(null);
+  const upload = async (file) => {
+    if (!file) return;
+    if (!/^image\//.test(file.type)) { Toast.warning('请选择图片文件'); return; }
+    if (file.size > 5 * 1024 * 1024) { Toast.warning('文件超过 5MB'); return; }
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch('/api/upload/image', { method: 'POST', body: fd, credentials: 'include' });
+      const data = await res.json();
+      if (data && data.success && data.data && data.data.url) {
+        onChange && onChange(data.data.url);
+        Toast.success('上传成功');
+      } else {
+        Toast.error((data && data.message) || '上传失败');
+      }
+    } catch (err) {
+      Toast.error('上传失败');
+    } finally {
+      setUploading(false);
+    }
+  };
+  const handleFile = (e) => {
+    const f = e.target.files && e.target.files[0];
+    e.target.value = '';
+    upload(f);
+  };
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setDragOver(false);
+    const f = e.dataTransfer.files && e.dataTransfer.files[0];
+    upload(f);
+  };
+  return (
+    <div style={{ ...(style||{}) }}>
+      <div
+        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={handleDrop}
+        onClick={() => inputRef.current && inputRef.current.click()}
+        style={{
+          border: dragOver ? '2px dashed #6E3FE7' : '2px dashed #ccc',
+          borderRadius: 8, padding: 12, textAlign: 'center', cursor: 'pointer',
+          background: dragOver ? 'rgba(110,63,231,0.08)' : 'rgba(0,0,0,0.02)',
+          transition: 'all 0.2s', marginBottom: 8,
+        }}
+      >
+        {value ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, justifyContent: 'center' }}>
+            <img src={value} alt="preview" style={{ width: 64, height: 64, borderRadius: 6, objectFit: 'cover', border: '1px solid #eee' }} onError={(e)=>{e.target.style.display='none';}} />
+            <Text type="tertiary">{uploading ? '上传中…' : '点击或拖拽更换图片'}</Text>
+          </div>
+        ) : (
+          <Text type="tertiary">{uploading ? '上传中…' : '📷 点击选择 / 拖拽图片到此处 / 手机选择照片'}</Text>
+        )}
+        <input ref={inputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFile} />
+      </div>
+      <Input
+        value={value}
+        onChange={(v) => onChange && onChange(v)}
+        placeholder={placeholder || '或直接粘贴图片 URL'}
+        size="small"
+      />
+    </div>
+  );
+}
+
 
 /* ================================================================== */
 /*  样式：动态渐变背景 + 玻璃拟态                                          */
@@ -406,7 +479,7 @@ const ProfileForm = ({ initial, onSave, onCancel, mode = 'create' }) => {
         </div>
         <div>
           <Text strong>头像 URL</Text>
-          <Input value={form.avatar} onChange={(v) => setForm({ ...form, avatar: v })} placeholder="https://..." />
+          <ImagePicker value={form.avatar} onChange={(v) => setForm({ ...form, avatar: v })} placeholder="https://... 或上传图片" />
         </div>
         <div>
           <Text strong>微信号<span className="agent-required">*</span></Text>
@@ -418,7 +491,7 @@ const ProfileForm = ({ initial, onSave, onCancel, mode = 'create' }) => {
         </div>
         <div>
           <Text strong>收款码 URL</Text>
-          <Input value={form.payment_qr} onChange={(v) => setForm({ ...form, payment_qr: v })} placeholder="https://... 上传后图片直链" />
+          <ImagePicker value={form.payment_qr} onChange={(v) => setForm({ ...form, payment_qr: v })} placeholder="收款码图片 URL 或上传" />
         </div>
         <div>
           <Text strong>个人宣传语</Text>
@@ -466,7 +539,7 @@ const GroupCreateForm = ({ onSave }) => {
         </Avatar>
         <div style={{ flex: 1 }}>
           <Text strong>小组头像 URL</Text>
-          <Input
+          <ImagePicker
             value={form.avatar_url}
             onChange={(v) => setForm({ ...form, avatar_url: v })}
             placeholder="https://... 留空则用首字头像"
@@ -537,9 +610,9 @@ const LeaderDashboard = ({ profile, group, members, leaderboard, reload }) => {
   }, [leaderboard, group]);
 
   const baseShare = toFrac(group?.base_share_pct ?? 0.25);
-  const bonusShare = toFrac(group?.bonus_share_pct ?? 0);
-  const currentShare = toFrac(group?.current_share_pct ?? (baseShare + bonusShare));
-  const totalShare = Math.min(currentShare || (baseShare + bonusShare), 0.7);
+  const currentShare = toFrac(group?.current_share_pct ?? group?.base_share_pct ?? 0.25);
+  const bonusShare = Math.max(0, currentShare - baseShare);
+  const totalShare = Math.min(currentShare, 0.7);
 
   const usedPct = (members || []).reduce((s, m) => s + toFrac(m.share_pct_in_group || 0), 0);
   const remainPct = Math.max(0, 1 - usedPct);
@@ -1002,7 +1075,7 @@ const GroupEditInline = ({ initial, onSave }) => {
         </Avatar>
         <div style={{ flex: 1 }}>
           <Text strong>小组头像 URL</Text>
-          <Input value={f.avatar_url} onChange={(v) => setF({ ...f, avatar_url: v })} placeholder="https://... 留空则用首字头像" />
+          <ImagePicker value={f.avatar_url} onChange={(v) => setF({ ...f, avatar_url: v })} placeholder="https://... 留空则用首字头像" />
         </div>
       </div>
       <div>
