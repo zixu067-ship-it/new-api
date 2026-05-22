@@ -40,6 +40,13 @@ package controller
                 c.JSON(http.StatusOK, gin.H{"success": false, "message": "姓名、手机号、微信号为必填项"})
                 return
         }
+        // Preserve fields not sent in request
+        if existing, err := model.GetAgentProfileByUserId(userId); err == nil {
+                if profile.AvatarUrl == "" { profile.AvatarUrl = existing.AvatarUrl }
+                if profile.WechatQrUrl == "" { profile.WechatQrUrl = existing.WechatQrUrl }
+                if profile.AlipayQrUrl == "" { profile.AlipayQrUrl = existing.AlipayQrUrl }
+                if profile.Remark == "" { profile.Remark = existing.Remark }
+        }
         if err := profile.Upsert(); err != nil {
                 common.SysError("SaveAgentProfile error: " + err.Error())
                 c.JSON(http.StatusOK, gin.H{"success": false, "message": "保存失败，请稍后重试"})

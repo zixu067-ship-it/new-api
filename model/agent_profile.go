@@ -9,6 +9,7 @@ package model
         RealName    string `json:"real_name" gorm:"type:varchar(64)"`
         Phone       string `json:"phone" gorm:"type:varchar(32)"`
         WechatId    string `json:"wechat_id" gorm:"type:varchar(64)"`
+        AvatarUrl   string `json:"avatar_url" gorm:"type:varchar(512)"`
         WechatQrUrl string `json:"wechat_qr_url" gorm:"type:varchar(255)"`
         AlipayQrUrl string `json:"alipay_qr_url" gorm:"type:varchar(255)"`
         Remark      string `json:"remark" gorm:"type:text"`
