@@ -19,11 +19,11 @@ package model
         TopupId          int     `json:"topup_id" gorm:"index"`
         UserId           int     `json:"user_id" gorm:"index;not null"`
         GroupId          int     `json:"group_id" gorm:"index"`
-        TopupAmount      float64 `json:"topup_amount" gorm:"type:decimal(12,2)"`
+        TopupAmount      float64 `json:"topup_amount" gorm:"type:decimal(14,4)"`
         DiscountApplied  float64 `json:"discount_applied" gorm:"type:decimal(3,2)"`
-        ProfitBase       float64 `json:"profit_base" gorm:"type:decimal(12,2)"`
+        ProfitBase       float64 `json:"profit_base" gorm:"type:decimal(14,4)"`
         GroupSharePct    float64 `json:"group_share_pct" gorm:"type:decimal(5,2)"`
-        GroupShareAmount float64 `json:"group_share_amount" gorm:"type:decimal(12,2)"`
+        GroupShareAmount float64 `json:"group_share_amount" gorm:"type:decimal(14,4)"`
         MemberBreakdown  string  `json:"member_breakdown" gorm:"type:text"`
         SettlementStatus string  `json:"settlement_status" gorm:"type:varchar(16);default:'pending';index"`
         PayoutId         int     `json:"payout_id" gorm:"index"`
@@ -81,7 +81,7 @@ package model
         if err != nil {
                 return
         }
-        topupAmount := float64(topUp.Amount) / 100.0
+        topupAmount := topUp.Money
         groupSharePct := group.CurrentSharePct
         groupShareAmount := topupAmount * groupSharePct / 100.0
         members, _ := GetPromoMembersByGroup(group.Id)
