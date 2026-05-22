@@ -65,11 +65,19 @@ package model
         return total, err
   }
   func RecordProfitFromTopUp(userId int, topUp *TopUp) {
+        var groupId int
         var attr UserGroupAttribution
-        if err := DB.Where("user_id = ?", userId).First(&attr).Error; err != nil {
-                return
+        if err := DB.Where("user_id = ?", userId).First(&attr).Error; err == nil {
+                groupId = attr.GroupId
+        } else {
+                // fallback: user might be a leader / co-leader / member in promo_members
+                member, mErr := GetPromoMemberByUserId(userId)
+                if mErr != nil || member == nil || member.Status != 1 {
+                        return
+                }
+                groupId = member.GroupId
         }
-        group, err := GetPromoGroupById(attr.GroupId)
+        group, err := GetPromoGroupById(groupId)
         if err != nil {
                 return
         }
